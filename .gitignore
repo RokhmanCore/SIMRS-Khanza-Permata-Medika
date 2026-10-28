@@ -1,0 +1,140 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Java / NetBeans generated files
+/build/
+/*/build/
+/*/dist/
+/*/nbproject/private/
+/nbproject/private/
+*.class
+*.log
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+*local-secrets*
+*credentials*
+*credential*
+*secrets*
+*.pem
+*.key
+
+# Local database dumps and patient data
+*.sql
+*.sql.gz
+*.dump
+*.bak
+*.backup
+*.ibd
+*.ibdata
+*.csv
+*.xlsx
+*.xls
+
+# Temporary files
+*.tmp
+*.swp
+*.orig
+*~
+
+# Local database settings
+**/setting/database.xml
+
+# Local logs and runtime data
+logs/
+*/logs/
+cache/
+*/cache/
+
+# Local patient records and generated documents
+/RPP*.pdf
+/RM*.pdf
+/riwayat.pdf
+/esign/file.pdf
+
+# Local runtime/cache content
+/cache/
+/*/cache/
+
+# Local cache and generated runtime data
+/cache/
+/*/cache/
+**/cache/snomed.iyem
+
+# Runtime uploads: patient documents and locally uploaded files
+/webapps/*/upload/
+/webapps/*/pages/upload/
+**/pages/upload/
+
+# Generated patient-specific PDF files
+/RPP*.pdf
+/RM*.pdf
+/riwayat.pdf
+/esign/file.pdf
+
+# NetBeans private machine-specific settings
+**/nbproject/private/
+
+# Local uploaded documents: may contain patient or hospital data
+**/pages/upload/**
+webapps/*/upload/**
+
+# Local cache and compiled output
+**/cache/**
+**/build/**
+**/dist/
+
+# Local SNOMED cache
+/cache/
+**/cache/
+
+# Additional local database and operating-system files
+*.mdb
+Thumbs.db
+
+# Local SNOMED cache
+/cache/snomed.iyem
+
+# Experimental output - review separately before publishing
+/Claude outputs/
+
+# Keep PHP application code inside upload directories,
+# but do not publish uploaded patient documents.
+!**/pages/upload/
+!**/pages/upload/*.php
+!**/pages/upload/**/*.php
+
+# Uploaded ebook documents - review before publishing
+/webapps/ebook/pages/upload/*.pdf
+
+# Large local Java runtime files - review before publishing
+/lib/rt.jar
+/lib/libjfxwebkit.dylib
+
+# macOS and Windows metadata
+.DS_Store
+Thumbs.db
+
+# Local/generated report PDFs - review before publishing
+/report/rptLembarSkriningRalan.pdf
+/report/rptPeriksaLabMB.pdf
+/report/rptPeriksaLabMB2.pdf
+
+# Generated build output - exclude recursively
+**/build/
+**/dist/
+**/target/
+**/.gradle/
+**/nbproject/private/
+
+# Exclude all generated Java build output
+**/build/**
+**/dist/**
+**/target/**
+**/cache/**
+*.class
+*.log

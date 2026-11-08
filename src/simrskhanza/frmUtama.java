@@ -8328,9 +8328,11 @@ public class frmUtama extends javax.swing.JFrame {
                 long remainingLockout=remainingLoginLockoutMillis(attemptedUser);
                 if(remainingLockout>0){
                     auditLogin(attemptedUser,"LOCKED");
-                    JOptionPane.showMessageDialog(null,"Akun terkunci setelah 3 kali gagal login. Silakan coba lagi dalam "+
+                    JOptionPane.showMessageDialog(DlgLogin,"Akun terkunci setelah 3 kali gagal login. Silakan coba lagi dalam "+
                             ((remainingLockout+59999)/60000)+" menit.");
                     edPwd.setText("");
+                    DlgLogin.toFront();
+                    edAdmin.requestFocusInWindow();
                     return;
                 }
                 cacheigd.reset();
@@ -8424,7 +8426,7 @@ public class frmUtama extends javax.swing.JFrame {
                 }else if((akses.getjml1()==0)&&(akses.getjml2()==0)){
                     auditLogin(attemptedUser,"FAILURE");
                     boolean locked=remainingLoginLockoutMillis(attemptedUser)>0;
-                    JOptionPane.showMessageDialog(null,locked?
+                    JOptionPane.showMessageDialog(DlgLogin,locked?
                             "Maaf, login gagal 3 kali. Akun dikunci selama 5 menit.":
                             "Maaf, Gagal login. ID User atau password ada yang salah ...!");
                     BtnToolReg.setEnabled(false);
@@ -8459,7 +8461,7 @@ public class frmUtama extends javax.swing.JFrame {
                 }
             } catch (java.sql.SQLException e) {
                 System.out.println("Notifikasi audit login : "+e.getMessage());
-                JOptionPane.showMessageDialog(null,"Login tidak dapat diproses karena audit login gagal. Silakan hubungi administrator.");
+                JOptionPane.showMessageDialog(DlgLogin,"Login tidak dapat diproses karena audit login gagal. Silakan hubungi administrator.");
             } catch (Exception e) {
                 System.out.println("Notifikasi : "+e);
             }

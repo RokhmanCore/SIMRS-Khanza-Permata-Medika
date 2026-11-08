@@ -8323,13 +8323,23 @@ public class frmUtama extends javax.swing.JFrame {
         }else if(edPwd.getText().trim().equals("")){
             Valid.textKosong(edPwd,"Password");
         }else {
+            String attemptedUser=edAdmin.getText().trim();
             try {   
+                long remainingLockout=remainingLoginLockoutMillis(attemptedUser);
+                if(remainingLockout>0){
+                    auditLogin(attemptedUser,"LOCKED");
+                    JOptionPane.showMessageDialog(null,"Akun terkunci setelah 3 kali gagal login. Silakan coba lagi dalam "+
+                            ((remainingLockout+59999)/60000)+" menit.");
+                    edPwd.setText("");
+                    return;
+                }
                 cacheigd.reset();
                 cacherawatjalan.reset();
                 cacherawatinap.reset();
                 cacheregistrasi.reset();
                 akses.setData(edAdmin.getText(),edPwd.getText());        
                 if(akses.getjml1()>=1){    
+                    auditLogin(attemptedUser,"SUCCESS");
                     BtnMenu.setEnabled(true);
                     BtnToolReg.setEnabled(true);
                     BtnToolKamnap.setEnabled(true);
@@ -8360,6 +8370,7 @@ public class frmUtama extends javax.swing.JFrame {
                         Sequel.menyimpan("tracker","'Admin Utama',current_date(),current_time()","Login");
                     }
                 }else if(akses.getjml2()>=1){  
+                    auditLogin(attemptedUser,"SUCCESS");
                     BtnMenu.setEnabled(true);
                     DlgLogin.dispose();
                     BtnLog.setText("Log Out");
@@ -8411,7 +8422,11 @@ public class frmUtama extends javax.swing.JFrame {
                         Sequel.menyimpan("tracker","'"+edAdmin.getText()+"',current_date(),current_time()","Login");
                     }
                 }else if((akses.getjml1()==0)&&(akses.getjml2()==0)){
-                    JOptionPane.showMessageDialog(null,"Maaf, Gagal login. ID User atau password ada yang salah ...!");
+                    auditLogin(attemptedUser,"FAILURE");
+                    boolean locked=remainingLoginLockoutMillis(attemptedUser)>0;
+                    JOptionPane.showMessageDialog(null,locked?
+                            "Maaf, login gagal 3 kali. Akun dikunci selama 5 menit.":
+                            "Maaf, Gagal login. ID User atau password ada yang salah ...!");
                     BtnToolReg.setEnabled(false);
                     BtnToolKamnap.setEnabled(false);
                     BtnToolKasir.setEnabled(false);
@@ -8442,11 +8457,55 @@ public class frmUtama extends javax.swing.JFrame {
                     lblStts.setText("Status Admin : ");
                     lblUser.setText("Log Out");   
                 }
+            } catch (java.sql.SQLException e) {
+                System.out.println("Notifikasi audit login : "+e.getMessage());
+                JOptionPane.showMessageDialog(null,"Login tidak dapat diproses karena audit login gagal. Silakan hubungi administrator.");
             } catch (Exception e) {
                 System.out.println("Notifikasi : "+e);
             }
         }
     }//GEN-LAST:event_BtnLoginActionPerformed
+
+    private long remainingLoginLockoutMillis(String user) throws java.sql.SQLException {
+        return LoginAttemptTracker.remainingLockoutMillis(readLoginAuditHistory(user));
+    }
+
+    private LoginAttemptTracker.AuditHistory readLoginAuditHistory(String user) throws java.sql.SQLException {
+        String[] results=new String[3];
+        int count=0;
+        long secondsSinceLatestEvent=0;
+        try (PreparedStatement audit=koneksi.prepareStatement(
+                "select outcome,timestampdiff(second,attempted_at,current_timestamp) "+
+                "from login_audit where user_id=? and outcome in ('SUCCESS','FAILURE','RESET') "+
+                "order by id desc limit 3")) {
+            audit.setString(1,user);
+            try (ResultSet history=audit.executeQuery()) {
+                while(history.next()) {
+                    if(count==0) {
+                        secondsSinceLatestEvent=history.getLong(2);
+                    }
+                    results[count++]=history.getString(1);
+                }
+            }
+        }
+        return new LoginAttemptTracker.AuditHistory(java.util.Arrays.copyOf(results,count),secondsSinceLatestEvent);
+    }
+
+    private void auditLogin(String user, String result) throws java.sql.SQLException {
+        if("FAILURE".equals(result) && LoginAttemptTracker.shouldResetExpiredLockout(readLoginAuditHistory(user))) {
+            insertLoginAudit(user,"RESET");
+        }
+        insertLoginAudit(user,result);
+    }
+
+    private void insertLoginAudit(String user, String result) throws java.sql.SQLException {
+        try (PreparedStatement audit=koneksi.prepareStatement(
+                "insert into login_audit (user_id,attempted_at,outcome) values(?,current_timestamp,?)")) {
+            audit.setString(1,user);
+            audit.setString(2,result);
+            audit.executeUpdate();
+        }
+    }
 
     private void BtnToolKamnapActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_BtnToolKamnapActionPerformed
         isTutup();

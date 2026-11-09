@@ -8425,10 +8425,18 @@ public class frmUtama extends javax.swing.JFrame {
                     }
                 }else if((akses.getjml1()==0)&&(akses.getjml2()==0)){
                     auditLogin(attemptedUser,"FAILURE");
-                    boolean locked=remainingLoginLockoutMillis(attemptedUser)>0;
+                    LoginAttemptTracker.AuditHistory loginHistory =
+                            readLoginAuditHistory(attemptedUser);
+                    int failedAttempts =
+                            LoginAttemptTracker.consecutiveFailures(loginHistory);
+                    boolean locked =
+                            LoginAttemptTracker.remainingLockoutMillis(loginHistory)>0;
+
                     JOptionPane.showMessageDialog(DlgLogin,locked?
-                            "Maaf, login gagal 3 kali. Akun dikunci selama 5 menit.":
-                            "Maaf, Gagal login. ID User atau password ada yang salah ...!");
+                            "Login gagal "+failedAttempts+" dari 3 kali. "+
+                            "Akun dikunci selama 5 menit.":
+                            "Login gagal. Percobaan gagal "+failedAttempts+" dari 3. "+
+                            "ID User atau password salah.");
                     BtnToolReg.setEnabled(false);
                     BtnToolKamnap.setEnabled(false);
                     BtnToolKasir.setEnabled(false);

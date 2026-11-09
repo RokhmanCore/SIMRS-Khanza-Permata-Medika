@@ -19,6 +19,17 @@ final class LoginAttemptTracker {
         return hasThreeRecentFailures(history) && history.secondsSinceLatestEvent >= LOCKOUT_SECONDS;
     }
 
+    static int consecutiveFailures(AuditHistory history) {
+        int count = 0;
+        for (String result : history.results) {
+            if (!"FAILURE".equals(result)) {
+                break;
+            }
+            count++;
+        }
+        return count;
+    }
+
     private static boolean hasThreeRecentFailures(AuditHistory history) {
         if (history.results.length < MAX_FAILED_ATTEMPTS) {
             return false;

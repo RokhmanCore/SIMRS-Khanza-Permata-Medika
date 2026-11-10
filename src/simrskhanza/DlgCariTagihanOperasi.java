@@ -3388,6 +3388,220 @@ private void MnHapusObatOperasiActionPerformed(java.awt.event.ActionEvent evt) {
         }
     }//GEN-LAST:event_MnLaporanOperasiActionPerformed
 
+
+    private String laporanNoRawatEksternal = "";
+    private String laporanTanggalEksternal = "";
+
+
+    public void cetakLaporanOperasiDariDataLama(
+            String noRawat, String tanggalOperasi) {
+
+        if (noRawat == null || noRawat.trim().isEmpty()
+                || tanggalOperasi == null || tanggalOperasi.trim().isEmpty()) {
+            JOptionPane.showMessageDialog(
+                null, "Nomor rawat dan tanggal operasi wajib tersedia.");
+            return;
+        }
+
+        noRawat = noRawat.trim();
+        tanggalOperasi = tanggalOperasi.trim();
+
+        try {
+            Map<String, Object> param = new HashMap<>();
+            param.put("namars", akses.getnamars());
+            param.put("alamatrs", akses.getalamatrs());
+            param.put("kotars", akses.getkabupatenrs());
+            param.put("propinsirs", akses.getpropinsirs());
+            param.put("kontakrs", akses.getkontakrs());
+            param.put("emailrs", akses.getemailrs());
+            param.put("logo", Sequel.cariGambar(
+                "select setting.logo from setting"));
+            param.put("norawat", noRawat);
+            param.put("tanggaloperasi", tanggalOperasi);
+
+            String kodeOperator = "";
+            String sqlOperator =
+                "select operasi.operator1 from operasi " +
+                "where operasi.no_rawat=? and operasi.tgl_operasi=?";
+
+            try (PreparedStatement psOperator =
+                    koneksi.prepareStatement(sqlOperator)) {
+                psOperator.setString(1, noRawat);
+                psOperator.setString(2, tanggalOperasi);
+
+                try (ResultSet rsOperator = psOperator.executeQuery()) {
+                    if (rsOperator.next()) {
+                        kodeOperator = rsOperator.getString(1);
+                    }
+                }
+            }
+
+            String namaOperator = Sequel.cariIsi(
+                "select pegawai.nama from pegawai " +
+                "where pegawai.nik=?", kodeOperator
+            );
+
+            String fingerCetak = Sequel.cariIsi(
+                "select sha1(sidikjari.sidikjari) " +
+                "from sidikjari inner join pegawai " +
+                "on pegawai.id=sidikjari.id where pegawai.nik=?",
+                kodeOperator
+            );
+
+            param.put("finger",
+                "Dikeluarkan di " + akses.getnamars()
+                + ", Kabupaten/Kota " + akses.getkabupatenrs()
+                + "\nDitandatangani secara elektronik oleh " + namaOperator
+                + "\nID " + (fingerCetak.equals("") ? kodeOperator : fingerCetak)
+                + "\n" + Valid.SetTgl3(tanggalOperasi)
+            );
+
+            StringBuilder daftarTindakan = new StringBuilder();
+            String sqlTindakan =
+                "select paket_operasi.nm_perawatan " +
+                "from operasi inner join paket_operasi " +
+                "on paket_operasi.kode_paket=operasi.kode_paket " +
+                "where operasi.no_rawat=? and operasi.tgl_operasi=?";
+
+            try (PreparedStatement ps = koneksi.prepareStatement(sqlTindakan)) {
+                ps.setString(1, noRawat);
+                ps.setString(2, tanggalOperasi);
+                try (ResultSet r = ps.executeQuery()) {
+                    while (r.next()) {
+                        if (daftarTindakan.length() > 0) {
+                            daftarTindakan.append(", ");
+                        }
+                        daftarTindakan.append(r.getString("nm_perawatan"));
+                    }
+                }
+            }
+            param.put("tindakan", daftarTindakan.toString());
+
+            String statusLanjut = Sequel.cariIsi(
+                "select reg_periksa.status_lanjut " +
+                "from reg_periksa where reg_periksa.no_rawat=?",
+                noRawat
+            );
+
+            boolean rawatJalan = "Ralan".equals(statusLanjut);
+            String tabelPeriksa = rawatJalan
+                ? "pemeriksaan_ralan" : "pemeriksaan_ranap";
+
+            String sqlPeriksa =
+                "select no_rawat,tgl_perawatan,jam_rawat,suhu_tubuh," +
+                "tensi,nadi,respirasi,tinggi,berat,gcs,keluhan," +
+                "pemeriksaan,alergi,rtl,penilaian from " + tabelPeriksa +
+                " where no_rawat=? " +
+                "and concat(tgl_perawatan,' ',jam_rawat)<=? " +
+                "order by tgl_perawatan desc,jam_rawat desc limit 1";
+
+            try (PreparedStatement ps = koneksi.prepareStatement(sqlPeriksa)) {
+                ps.setString(1, noRawat);
+                ps.setString(2, tanggalOperasi);
+                try (ResultSet r = ps.executeQuery()) {
+                    if (r.next()) {
+                        param.put("tgl_perawatan", r.getDate("tgl_perawatan"));
+                        param.put("jam_rawat", r.getString("jam_rawat"));
+                        param.put("alergi", r.getString("alergi"));
+                        param.put("keluhan", r.getString("keluhan"));
+                        param.put("pemeriksaan", r.getString("pemeriksaan"));
+                        param.put("penilaian", r.getString("penilaian"));
+                        param.put("rtl", r.getString("rtl"));
+                        param.put("suhu_tubuh", r.getString("suhu_tubuh"));
+                        param.put("tensi", r.getString("tensi"));
+                        param.put("tinggi", r.getString("tinggi"));
+                        param.put("berat", r.getString("berat"));
+                        param.put("nadi", r.getString("nadi"));
+                        param.put("respirasi", r.getString("respirasi"));
+                        param.put("gcs", r.getString("gcs"));
+
+                        if (rawatJalan) {
+                            param.put("ruang", Sequel.cariIsi(
+                                "select poliklinik.nm_poli from poliklinik " +
+                                "inner join reg_periksa " +
+                                "on reg_periksa.kd_poli=poliklinik.kd_poli " +
+                                "where reg_periksa.no_rawat=?",
+                                noRawat
+                            ));
+                        } else {
+                            param.put("ruang", Sequel.cariIsi(
+                                "select nm_bangsal from bangsal inner join kamar " +
+                                "inner join kamar_inap on bangsal.kd_bangsal=kamar.kd_bangsal " +
+                                "and kamar_inap.kd_kamar=kamar.kd_kamar " +
+                                "where no_rawat=? order by tgl_masuk desc limit 1",
+                                noRawat
+                            ));
+                        }
+                    }
+                }
+            }
+
+            Valid.MyReport(
+                "rptLaporanOperasi.jasper",
+                "report",
+                "::[ Laporan Operasi ]::",
+                param
+            );
+
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(
+                null,
+                "Gagal mencetak Laporan Operasi:\n" + ex.getMessage(),
+                "Cetak Laporan Operasi",
+                JOptionPane.ERROR_MESSAGE
+            );
+            ex.printStackTrace();
+        }
+    }
+
+
+    public void bukaLaporanOperasiDariDataLama(String noRawat, String tanggalOperasi) {
+        if (noRawat == null || noRawat.trim().isEmpty()
+                || tanggalOperasi == null || tanggalOperasi.trim().isEmpty()) {
+            JOptionPane.showMessageDialog(null, "Nomor rawat dan tanggal operasi wajib tersedia.");
+            return;
+        }
+
+        laporanNoRawatEksternal = noRawat.trim();
+        laporanTanggalEksternal = tanggalOperasi.trim();
+
+        PreOp.setText("");
+        PostOp.setText("");
+        Jaringan.setText("");
+        NomorImplant.setText("");
+        Laporan.setText("");
+
+        try (PreparedStatement ps = koneksi.prepareStatement(
+                "SELECT diagnosa_preop, diagnosa_postop, jaringan_dieksekusi, " +
+                "selesaioperasi, permintaan_pa, nomor_implan, laporan_operasi " +
+                "FROM laporan_operasi WHERE no_rawat=? AND tanggal=? LIMIT 1")) {
+            ps.setString(1, laporanNoRawatEksternal);
+            ps.setString(2, laporanTanggalEksternal);
+
+            try (ResultSet r = ps.executeQuery()) {
+                if (r.next()) {
+                    PreOp.setText(r.getString("diagnosa_preop"));
+                    PostOp.setText(r.getString("diagnosa_postop"));
+                    Jaringan.setText(r.getString("jaringan_dieksekusi"));
+                    tgl2.setDate(r.getDate("selesaioperasi"));
+                    DikirimPA.setSelectedItem(r.getString("permintaan_pa"));
+                    NomorImplant.setText(r.getString("nomor_implan"));
+                    Laporan.setText(r.getString("laporan_operasi"));
+                } else {
+                    tgl2.setDate(new java.util.Date());
+                }
+            }
+
+            WindowLaporan.setSize(800, 500);
+            WindowLaporan.setLocationRelativeTo(null);
+            WindowLaporan.setVisible(true);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(null,
+                "Gagal membuka form Laporan Operasi:\n" + ex.getMessage());
+            ex.printStackTrace();
+        }
+    }
+
     private void MnUbahLaporanActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_MnUbahLaporanActionPerformed
         if(tbDokter.getSelectedRow()>-1){
             if(!tbDokter.getValueAt(tbDokter.getSelectedRow(),1).toString().equals("")){
@@ -3421,14 +3635,41 @@ private void MnHapusObatOperasiActionPerformed(java.awt.event.ActionEvent evt) {
     }//GEN-LAST:event_MnUbahLaporanActionPerformed
 
     private void BtnSimpanActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_BtnSimpanActionPerformed
-        if(!Laporan.getText().equals("")){
-            Sequel.queryu("delete from laporan_operasi where no_rawat='"+tbDokter.getValueAt(tbDokter.getSelectedRow(),1)+"' and tanggal='"+tbDokter.getValueAt(tbDokter.getSelectedRow(),0) +"'");
+        String noRawatSimpan = laporanNoRawatEksternal;
+        String tanggalSimpan = laporanTanggalEksternal;
+
+        if (noRawatSimpan.isEmpty() || tanggalSimpan.isEmpty()) {
+            int baris = tbDokter.getSelectedRow();
+            if (baris < 0) {
+                JOptionPane.showMessageDialog(null, "Pilih data operasi terlebih dahulu.");
+                return;
+            }
+            noRawatSimpan = String.valueOf(tbDokter.getValueAt(baris, 1));
+            tanggalSimpan = String.valueOf(tbDokter.getValueAt(baris, 0));
+        }
+
+        if (Laporan.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(null, "Isi laporan operasi terlebih dahulu.");
+            return;
+        }
+
+        try (PreparedStatement hapus = koneksi.prepareStatement(
+                "DELETE FROM laporan_operasi WHERE no_rawat=? AND tanggal=?")) {
+            hapus.setString(1, noRawatSimpan);
+            hapus.setString(2, tanggalSimpan);
+            hapus.executeUpdate();
+
             Sequel.menyimpan("laporan_operasi","?,?,?,?,?,?,?,?,?","laporan operasi",9,new String[]{
-                tbDokter.getValueAt(tbDokter.getSelectedRow(),1).toString(),tbDokter.getValueAt(tbDokter.getSelectedRow(),0).toString(),PreOp.getText(),
-                PostOp.getText(),Jaringan.getText(),Valid.SetTgl(tgl2.getSelectedItem()+"")+" "+tgl2.getSelectedItem().toString().substring(11,19),
-                DikirimPA.getSelectedItem().toString(),NomorImplant.getText(),Laporan.getText()
+                noRawatSimpan, tanggalSimpan, PreOp.getText(),
+                PostOp.getText(), Jaringan.getText(),
+                Valid.SetTgl(tgl2.getSelectedItem()+"")+" "+tgl2.getSelectedItem().toString().substring(11,19),
+                String.valueOf(DikirimPA.getSelectedItem()), NomorImplant.getText(), Laporan.getText()
             });
-            JOptionPane.showMessageDialog(null,"Proses update selesai...!!!!");
+
+            JOptionPane.showMessageDialog(null, "Proses update selesai.");
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(null, "Gagal menyimpan laporan:\n" + ex.getMessage());
+            ex.printStackTrace();
         }
     }//GEN-LAST:event_BtnSimpanActionPerformed
 

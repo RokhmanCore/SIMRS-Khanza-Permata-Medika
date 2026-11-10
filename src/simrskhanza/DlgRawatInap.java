@@ -214,6 +214,12 @@ public final class DlgRawatInap extends javax.swing.JDialog {
         super(parent, modal);
         initComponents();
         initRawatInap();
+    TabRawat.addTab("Data Operasi", new PanelDataLamaOperasi());
+        TabRawat.addChangeListener(e -> {
+            if (TabRawat.getSelectedComponent() instanceof PanelDataLamaOperasi) {
+                ((PanelDataLamaOperasi) TabRawat.getSelectedComponent()).tampil();
+            }
+        });
 
         this.setLocation(8,1);
         setSize(885,674);
@@ -12588,7 +12594,110 @@ private void BtnEditKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_B
         }
     }
     
-    @Override
+    /** Tab tambahan Data Lama Operasi; terpisah dari filter Rawat Inap. */
+    /** Tab tambahan Data Lama Operasi. */
+    private class PanelDataLamaOperasi extends javax.swing.JPanel {
+        private final javax.swing.table.DefaultTableModel model;
+        private final javax.swing.JTable tabel;
+
+        PanelDataLamaOperasi() {
+            setLayout(new java.awt.BorderLayout(5,5));
+            model = new javax.swing.table.DefaultTableModel(new Object[]{"No.","Tgl. Operasi","No. Rawat","No. RM","Nama Pasien","Operator 1","Operasi","Mulai","Selesai","Durasi (menit)","Status Laporan"},0) {
+                @Override public boolean isCellEditable(int row, int col) { return false; }
+            };
+            tabel = new javax.swing.JTable(model); tabel.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_OFF);
+            tabel.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION); tabel.setRowHeight(22);
+            int[] widths = {45,145,155,75,190,160,220,145,145,110,140};
+            for (int i=0;i<widths.length;i++) tabel.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
+            tabel.setDefaultRenderer(Object.class,new WarnaTable()); add(new javax.swing.JScrollPane(tabel),java.awt.BorderLayout.CENTER);
+            javax.swing.JPopupMenu popup = new javax.swing.JPopupMenu();
+            javax.swing.JMenuItem laporan = new javax.swing.JMenuItem("Laporan Operasi Pasien");
+            laporan.addActionListener(e -> bukaLaporanOperasi()); popup.add(laporan); 
+            javax.swing.JMenuItem cetak =
+                new javax.swing.JMenuItem("Cetak PDF Laporan Operasi Pasien");
+            cetak.addActionListener(e -> cetakLaporanOperasi());
+            popup.add(cetak);
+tabel.setComponentPopupMenu(popup);
+            tabel.addMouseListener(new java.awt.event.MouseAdapter() {
+                private void pilih(java.awt.event.MouseEvent e) { int r=tabel.rowAtPoint(e.getPoint()); if(r>=0)tabel.setRowSelectionInterval(r,r); }
+                @Override public void mousePressed(java.awt.event.MouseEvent e) { if(e.isPopupTrigger())pilih(e); }
+                @Override public void mouseReleased(java.awt.event.MouseEvent e) { if(e.isPopupTrigger())pilih(e); }
+            });
+            tampil();
+        }
+        private void tampil() {
+            model.setRowCount(0);
+            String sql="SELECT o.no_rawat,o.tgl_operasi,rp.no_rkm_medis,p.nm_pasien,o.operator1,pg.nama AS nama_operator,po.nm_perawatan,lo.tanggal AS mulai,lo.selesaioperasi,"+
+                "CASE WHEN lo.tanggal IS NOT NULL AND lo.selesaioperasi IS NOT NULL AND lo.selesaioperasi>lo.tanggal THEN TIMESTAMPDIFF(MINUTE,lo.tanggal,lo.selesaioperasi) ELSE NULL END AS durasi,"+
+                "CASE WHEN lo.no_rawat IS NULL THEN 'Belum ada laporan' ELSE 'Sudah ada laporan' END AS status_laporan FROM operasi o "+
+                "INNER JOIN reg_periksa rp ON rp.no_rawat=o.no_rawat INNER JOIN pasien p ON p.no_rkm_medis=rp.no_rkm_medis "+
+                "LEFT JOIN pegawai pg ON pg.nik=o.operator1 LEFT JOIN paket_operasi po ON po.kode_paket=o.kode_paket "+
+                "LEFT JOIN laporan_operasi lo ON lo.no_rawat=o.no_rawat AND lo.tanggal=o.tgl_operasi "+
+                "WHERE o.no_rawat=? ORDER BY o.tgl_operasi DESC,o.no_rawat";
+            String noRawatAktif=TNoRw.getText().trim();
+            if(noRawatAktif.isEmpty()) return;
+            try (java.sql.PreparedStatement psTab=koneksi.prepareStatement(sql)) {
+                psTab.setString(1,noRawatAktif);
+                try (java.sql.ResultSet r=psTab.executeQuery()) { int no=0; while(r.next()) {
+                    String op=r.getString("nama_operator"); if(op==null||op.trim().isEmpty())op=r.getString("operator1");
+                    java.sql.Timestamp mulai=r.getTimestamp("mulai"), selesai=r.getTimestamp("selesaioperasi"); Object durasi=r.getObject("durasi");
+                    model.addRow(new Object[]{++no,r.getString("tgl_operasi"),r.getString("no_rawat"),r.getString("no_rkm_medis"),r.getString("nm_pasien"),op,r.getString("nm_perawatan"),mulai==null?"":mulai.toString(),selesai==null?"":selesai.toString(),durasi==null?"Periksa waktu":durasi,r.getString("status_laporan")});
+                }}
+            } catch(Exception ex) { System.out.println("Notif Data Lama Operasi: "+ex); javax.swing.JOptionPane.showMessageDialog(this,"Gagal mengambil data operasi:\n"+ex.getMessage(),"Data Lama Operasi",javax.swing.JOptionPane.ERROR_MESSAGE); }
+        }
+        private void bukaLaporanOperasi() {
+            int row = tabel.getSelectedRow();
+            if (row < 0) {
+                javax.swing.JOptionPane.showMessageDialog(this,
+                    "Pilih baris operasi terlebih dahulu.");
+                return;
+            }
+
+            String noRawat = String.valueOf(tabel.getValueAt(row, 2));
+            String tanggalOperasi = String.valueOf(tabel.getValueAt(row, 1));
+
+            try {
+                DlgCariTagihanOperasi form =
+                    new DlgCariTagihanOperasi(null, false);
+                form.bukaLaporanOperasiDariDataLama(noRawat, tanggalOperasi);
+            } catch (Exception ex) {
+                javax.swing.JOptionPane.showMessageDialog(this,
+                    "Gagal membuka form Laporan Operasi:\n" + ex.getMessage(),
+                    "Laporan Operasi",
+                    javax.swing.JOptionPane.ERROR_MESSAGE);
+                ex.printStackTrace();
+            }
+        }
+
+        private void cetakLaporanOperasi() {
+            int row = tabel.getSelectedRow();
+            if (row < 0) {
+                javax.swing.JOptionPane.showMessageDialog(
+                    this, "Pilih baris operasi terlebih dahulu.");
+                return;
+            }
+
+            String noRawat = String.valueOf(tabel.getValueAt(row, 2));
+            String tanggalOperasi = String.valueOf(tabel.getValueAt(row, 1));
+
+            try {
+                DlgCariTagihanOperasi form =
+                    new DlgCariTagihanOperasi(null, false);
+                form.cetakLaporanOperasiDariDataLama(
+                    noRawat, tanggalOperasi);
+            } catch (Exception ex) {
+                javax.swing.JOptionPane.showMessageDialog(
+                    this,
+                    "Gagal mencetak Laporan Operasi:\n" + ex.getMessage(),
+                    "Cetak Laporan Operasi",
+                    javax.swing.JOptionPane.ERROR_MESSAGE
+                );
+                ex.printStackTrace();
+            }
+        }
+
+    }
+
     public void dispose() {
         executor.shutdownNow();
         super.dispose();

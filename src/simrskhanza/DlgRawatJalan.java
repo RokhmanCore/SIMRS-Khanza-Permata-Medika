@@ -14906,7 +14906,12 @@ private void BtnEditKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_B
                 new javax.swing.JMenuItem("Laporan Operasi Pasien");
             laporan.addActionListener(e -> bukaLaporanOperasi());
             popup.add(laporan);
-            tabel.setComponentPopupMenu(popup);
+            
+            javax.swing.JMenuItem cetak =
+                new javax.swing.JMenuItem("Cetak PDF Laporan Operasi Pasien");
+            cetak.addActionListener(e -> cetakLaporanOperasi());
+            popup.add(cetak);
+tabel.setComponentPopupMenu(popup);
 
             tabel.addMouseListener(new java.awt.event.MouseAdapter() {
                 private void pilih(java.awt.event.MouseEvent e) {
@@ -15023,6 +15028,34 @@ private void BtnEditKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_B
                 ex.printStackTrace();
             }
         }
+
+        private void cetakLaporanOperasi() {
+            int row = tabel.getSelectedRow();
+            if (row < 0) {
+                javax.swing.JOptionPane.showMessageDialog(
+                    this, "Pilih baris operasi terlebih dahulu.");
+                return;
+            }
+
+            String noRawat = String.valueOf(tabel.getValueAt(row, 2));
+            String tanggalOperasi = String.valueOf(tabel.getValueAt(row, 1));
+
+            try {
+                DlgCariTagihanOperasi form =
+                    new DlgCariTagihanOperasi(null, false);
+                form.cetakLaporanOperasiDariDataLama(
+                    noRawat, tanggalOperasi);
+            } catch (Exception ex) {
+                javax.swing.JOptionPane.showMessageDialog(
+                    this,
+                    "Gagal mencetak Laporan Operasi:\n" + ex.getMessage(),
+                    "Cetak Laporan Operasi",
+                    javax.swing.JOptionPane.ERROR_MESSAGE
+                );
+                ex.printStackTrace();
+            }
+        }
+
     }
 
     @Override

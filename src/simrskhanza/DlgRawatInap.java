@@ -927,6 +927,7 @@ public final class DlgRawatInap extends javax.swing.JDialog {
         Btn5Soap = new widget.Button();
         BtnStatusVerifikasiSOAP = new widget.Button();
         BtnRiwayatSOAP = new widget.Button();
+        BtnVerifikasiSOAP = new widget.Button();
         jLabel7 = new widget.Label();
         TSuhu = new widget.TextBox();
         jLabel17 = new widget.Label();
@@ -1849,7 +1850,7 @@ public final class DlgRawatInap extends javax.swing.JDialog {
 
         PanelInput1.setName("PanelInput1"); // NOI18N
         PanelInput1.setOpaque(false);
-        PanelInput1.setPreferredSize(new java.awt.Dimension(192, 273));
+        PanelInput1.setPreferredSize(new java.awt.Dimension(192, 296));
         PanelInput1.setLayout(new java.awt.BorderLayout(1, 1));
 
         ChkInput.setIcon(new javax.swing.ImageIcon(getClass().getResource("/picture/143.png"))); // NOI18N
@@ -1874,7 +1875,7 @@ public final class DlgRawatInap extends javax.swing.JDialog {
         PanelInput1.add(ChkInput, java.awt.BorderLayout.PAGE_END);
 
         panelGlass12.setName("panelGlass12"); // NOI18N
-        panelGlass12.setPreferredSize(new java.awt.Dimension(44, 134));
+        panelGlass12.setPreferredSize(new java.awt.Dimension(44, 276));
         panelGlass12.setLayout(null);
 
         jLabel15.setText("Alergi :");
@@ -2109,9 +2110,9 @@ public final class DlgRawatInap extends javax.swing.JDialog {
         panelGlass12.add(scrollPane8);
         scrollPane8.setBounds(543, 196, 360, 44);
 
-        BtnStatusVerifikasiSOAP.setText("Verifikasi SOAP");
+        BtnStatusVerifikasiSOAP.setText("Riwayat Verifikasi SOAP");
         BtnStatusVerifikasiSOAP.setIcon(new javax.swing.ImageIcon(getClass().getResource("/picture/checked.png")));
-        BtnStatusVerifikasiSOAP.setToolTipText("Lihat status verifikasi SOAP yang dipilih");
+        BtnStatusVerifikasiSOAP.setToolTipText("Lihat riwayat verifikasi SOAP pasien");
         BtnStatusVerifikasiSOAP.setName("BtnStatusVerifikasiSOAP");
         BtnStatusVerifikasiSOAP.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -2119,11 +2120,11 @@ public final class DlgRawatInap extends javax.swing.JDialog {
             }
         });
         panelGlass12.add(BtnStatusVerifikasiSOAP);
-        BtnStatusVerifikasiSOAP.setBounds(908, 148, 190, 44);
+        BtnStatusVerifikasiSOAP.setBounds(908, 124, 190, 44);
 
         BtnRiwayatSOAP.setText("Status Verifikasi SOAP");
         BtnRiwayatSOAP.setIcon(new javax.swing.ImageIcon(getClass().getResource("/picture/item.png")));
-        BtnRiwayatSOAP.setToolTipText("Buka verifikasi SOAP pasien yang dipilih");
+        BtnRiwayatSOAP.setToolTipText("Lihat status verifikasi SOAP yang dipilih");
         BtnRiwayatSOAP.setName("BtnRiwayatSOAP"); // NOI18N
         BtnRiwayatSOAP.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -2131,7 +2132,19 @@ public final class DlgRawatInap extends javax.swing.JDialog {
             }
         });
         panelGlass12.add(BtnRiwayatSOAP);
-        BtnRiwayatSOAP.setBounds(908, 196, 190, 44);
+        BtnRiwayatSOAP.setBounds(908, 172, 190, 44);
+
+        BtnVerifikasiSOAP.setText("Verifikasi SOAP");
+        BtnVerifikasiSOAP.setIcon(new javax.swing.ImageIcon(getClass().getResource("/picture/accept_page.png")));
+        BtnVerifikasiSOAP.setToolTipText("Verifikasi manual satu SOAP yang dipilih");
+        BtnVerifikasiSOAP.setName("BtnVerifikasiSOAP");
+        BtnVerifikasiSOAP.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                BtnVerifikasiSOAPActionPerformed(evt);
+            }
+        });
+        panelGlass12.add(BtnVerifikasiSOAP);
+        BtnVerifikasiSOAP.setBounds(908, 220, 190, 44);
 
         jLabel59.setText("Evaluasi :");
         jLabel59.setName("jLabel59"); // NOI18N
@@ -7178,6 +7191,70 @@ private void BtnEditKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_B
         }
     }
 
+    private void BtnVerifikasiSOAPActionPerformed(java.awt.event.ActionEvent evt) {
+        int selected = tbPemeriksaan.getSelectedRow();
+        if (selected < 0) {
+            JOptionPane.showMessageDialog(this,
+                "Silakan pilih satu baris pemeriksaan SOAP terlebih dahulu.",
+                "Verifikasi SOAP", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        int row = tbPemeriksaan.convertRowIndexToModel(selected);
+        String noRawat = String.valueOf(tabModePemeriksaan.getValueAt(row, 1)).trim();
+        String tanggal = String.valueOf(tabModePemeriksaan.getValueAt(row, 4)).trim();
+        String jam = String.valueOf(tabModePemeriksaan.getValueAt(row, 5)).trim();
+
+        if (noRawat.isEmpty() || tanggal.isEmpty() || jam.isEmpty()
+                || "null".equalsIgnoreCase(noRawat)
+                || "null".equalsIgnoreCase(tanggal)
+                || "null".equalsIgnoreCase(jam)) {
+            JOptionPane.showMessageDialog(this,
+                "Identitas SOAP yang dipilih tidak lengkap.",
+                "Verifikasi SOAP", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        int konfirmasi = JOptionPane.showConfirmDialog(this,
+            "Apakah Anda yakin akan memverifikasi SOAP berikut?\n\n"
+            + "No. Rawat: " + noRawat + "\n"
+            + "Tanggal: " + tanggal + "\n"
+            + "Jam: " + jam,
+            "Konfirmasi Verifikasi SOAP",
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.QUESTION_MESSAGE);
+
+        if (konfirmasi != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        this.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        try {
+            boolean berhasil = rekammedis.SoapVerifikasiDPJP.verifikasiSatu(
+                koneksi, "Ranap", noRawat, tanggal, jam, akses.getkode());
+
+            if (berhasil) {
+                JOptionPane.showMessageDialog(this,
+                    "SOAP berhasil diverifikasi.",
+                    "Verifikasi SOAP", JOptionPane.INFORMATION_MESSAGE);
+                tampilPemeriksaan();
+            } else {
+                JOptionPane.showMessageDialog(this,
+                    "SOAP tidak dapat diverifikasi.\n"
+                    + "Kemungkinan SOAP sudah diverifikasi atau akun login "
+                    + "bukan DPJP yang bertanggung jawab.",
+                    "Verifikasi SOAP", JOptionPane.WARNING_MESSAGE);
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this,
+                "Gagal memverifikasi SOAP: " + e.getMessage(),
+                "Kesalahan", JOptionPane.ERROR_MESSAGE);
+            System.out.println("Verifikasi SOAP Rawat Inap: " + e);
+        } finally {
+            this.setCursor(Cursor.getDefaultCursor());
+        }
+    }
+
     private void BtnRiwayatSOAPActionPerformed(java.awt.event.ActionEvent evt) {
         if (TNoRw.getText().trim().isEmpty() || TNoRM.getText().trim().isEmpty()) {
             JOptionPane.showMessageDialog(null, "Silahkan pilih pasien terlebih dahulu.");
@@ -9240,6 +9317,7 @@ private void BtnEditKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_B
     private widget.Button Btn5Soap;
     private widget.Button BtnStatusVerifikasiSOAP;
     private widget.Button BtnRiwayatSOAP;
+    private widget.Button BtnVerifikasiSOAP;
     private widget.Button BtnAll;
     private widget.Button BtnAsuhanGizi;
     private widget.Button BtnAwalFisioterapi;
@@ -9922,7 +10000,7 @@ private void BtnEditKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_B
     private void isForm(){
         if(ChkInput.isSelected()==true){
             ChkInput.setVisible(false);
-            PanelInput1.setPreferredSize(new Dimension(WIDTH,273));
+            PanelInput1.setPreferredSize(new Dimension(WIDTH,296));
             panelGlass12.setVisible(true);      
             ChkInput.setVisible(true);
         }else if(ChkInput.isSelected()==false){           
@@ -9947,6 +10025,7 @@ private void BtnEditKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_B
         BtnRiwayat.setVisible(akses.getresume_pasien()); 
         BtnRiwayatSOAP.setVisible(akses.getresume_pasien());
         BtnStatusVerifikasiSOAP.setVisible(akses.getresume_pasien());
+        BtnVerifikasiSOAP.setVisible(akses.getresume_pasien());
         if(akses.getresume_pasien()==true){
             tinggi=tinggi+48;
         }

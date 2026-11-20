@@ -115,7 +115,7 @@ public final class SoapVerifikasiDPJP {
         return ubahTanggal(koneksi, jenis, noRawat, tanggal, kdDokter, false, alasan);
     }
 
-    static boolean verifikasiSatu(Connection koneksi, String jenis, String noRawat, String tanggal, String jam, String kdDokter) throws SQLException {
+    public static boolean verifikasiSatu(Connection koneksi, String jenis, String noRawat, String tanggal, String jam, String kdDokter) throws SQLException {
         return ubahSatu(koneksi, jenis, noRawat, tanggal, jam, kdDokter, true, "");
     }
 

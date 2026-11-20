@@ -25,6 +25,7 @@
 
 # Local database dumps and patient data
 *.sql
+!upgrade_soap_verifikasi_dpjp.sql
 *.sql.gz
 *.dump
 *.bak

@@ -168,6 +168,10 @@ public final class RMRiwayatPerawatan extends javax.swing.JDialog {
         LoadHTMLSOAPI.setEditable(false);
         LoadHTMLSOAPI.addHyperlinkListener(e -> {
             if (HyperlinkEvent.EventType.ACTIVATED.equals(e.getEventType())) {
+                if (e.getDescription() != null && e.getDescription().startsWith("soapverify://")) {
+                    prosesAksiVerifikasiSOAP(e.getDescription());
+                    return;
+                }
                 Desktop desktop = Desktop.getDesktop();
                 try {
                    desktop.browse(e.getURL().toURI());
@@ -4172,6 +4176,19 @@ private void BtnPasienKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event
         R4.setSelected(true);
     }
 
+    public void setRiwayatSOAP() {
+        TabRawat.setSelectedIndex(1);
+        BtnCari1ActionPerformed(null);
+    }
+
+    public void setNoRmSOAP(String norm, String nama) {
+        NoRM.setText(norm);
+        NmPasien.setText(nama);
+        isPasien();
+        TabRawat.setSelectedIndex(1);
+        BtnCari1ActionPerformed(null);
+    }
+
     private void isPasien() {
         try{
             ps=koneksi.prepareStatement(
@@ -6543,8 +6560,15 @@ private void BtnPasienKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event
                                             append("<td valign='middle' bgcolor='#FFFFF8' align='center' width='14%'>Plan</td>").
                                             append("<td valign='middle' bgcolor='#FFFFF8' align='center' width='14%'>Inst/Impl</td>").
                                             append("<td valign='middle' bgcolor='#FFFFF8' align='center' width='14%'>Evaluasi</td>").
+                                            append("<td valign='middle' bgcolor='#FFFFF8' align='center' width='12%'>Review &amp; Verifikasi DPJP</td>").
                                         append("</tr>");
+                            String tanggalSoapTerakhir = "";
                             do{
+                                String tanggalSoap = rs2.getString("tgl_perawatan");
+                                if (!tanggalSoap.equals(tanggalSoapTerakhir)) {
+                                    htmlContent.append(tampilTombolTanggalSOAP(tanggalSoap));
+                                    tanggalSoapTerakhir = tanggalSoap;
+                                }
                                 htmlContent.append("<tr class='isi'>").
                                                 append("<td align='center'>").append(rs2.getString("tgl_perawatan")).append("<br>").append(rs2.getString("jam_rawat")).append("</td>").
                                                 append("<td align='center'>").append(rs2.getString("nip")).append("<br>").append(rs2.getString("nama")).append("</td>").
@@ -6554,6 +6578,7 @@ private void BtnPasienKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event
                                                 append("<td align='left'>").append(rs2.getString("rtl").replaceAll("(\r\n|\r|\n|\n\r)","<br>")).append("</td>").
                                                 append("<td align='left'>").append(rs2.getString("instruksi").replaceAll("(\r\n|\r|\n|\n\r)","<br>")).append("</td>").
                                                 append("<td align='left'>").append(rs2.getString("evaluasi").replaceAll("(\r\n|\r|\n|\n\r)","<br>")).append("</td>").
+                                                append("<td align='center'>").append(tampilVerifikasiSOAP("Ralan", rs.getString("no_rawat"), rs2.getString("tgl_perawatan"), rs2.getString("jam_rawat"))).append("</td>").
                                             append("</tr>");
                             }while(rs2.next());
                         }       
@@ -6592,8 +6617,15 @@ private void BtnPasienKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event
                                             append("<td valign='middle' bgcolor='#FFFFF8' align='center' width='14%'>Plan</td>").
                                             append("<td valign='middle' bgcolor='#FFFFF8' align='center' width='14%'>Inst/Impl</td>").
                                             append("<td valign='middle' bgcolor='#FFFFF8' align='center' width='14%'>Evaluasi</td>").
+                                            append("<td valign='middle' bgcolor='#FFFFF8' align='center' width='12%'>Review &amp; Verifikasi DPJP</td>").
                                         append("</tr>");
+                            String tanggalSoapTerakhir = "";
                             do{
+                                String tanggalSoap = rs2.getString("tgl_perawatan");
+                                if (!tanggalSoap.equals(tanggalSoapTerakhir)) {
+                                    htmlContent.append(tampilTombolTanggalSOAP(tanggalSoap));
+                                    tanggalSoapTerakhir = tanggalSoap;
+                                }
                                 htmlContent.append("<tr class='isi'>").
                                                 append("<td align='center'>").append(rs2.getString("tgl_perawatan")).append("<br>").append(rs2.getString("jam_rawat")).append("</td>").
                                                 append("<td align='center'>").append(rs2.getString("nip")).append("<br>").append(rs2.getString("nama")).append("</td>").
@@ -6603,6 +6635,7 @@ private void BtnPasienKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event
                                                 append("<td align='left'>").append(rs2.getString("rtl").replaceAll("(\r\n|\r|\n|\n\r)","<br>")).append("</td>").
                                                 append("<td align='left'>").append(rs2.getString("instruksi").replaceAll("(\r\n|\r|\n|\n\r)","<br>")).append("</td>").
                                                 append("<td align='left'>").append(rs2.getString("evaluasi").replaceAll("(\r\n|\r|\n|\n\r)","<br>")).append("</td>").
+                                                append("<td align='center'>").append(tampilVerifikasiSOAP("Ranap", rs2.getString("no_rawat"), rs2.getString("tgl_perawatan"), rs2.getString("jam_rawat"))).append("</td>").
                                             append("</tr>");
                             }while(rs2.next());
                         }       
@@ -6641,6 +6674,174 @@ private void BtnPasienKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event
         } catch (Exception e) {
             System.out.println("Notif SOAPI : "+e);
         } 
+    }
+
+    private void prosesAksiVerifikasiSOAP(String link) {
+        try {
+            URI uri = new URI(link);
+            java.util.Map<String,String> nilai = new java.util.HashMap<String,String>();
+            String query = uri.getRawQuery();
+            if (query != null) for (String bagian : query.split("&")) {
+                String[] pasangan = bagian.split("=", 2);
+                nilai.put(java.net.URLDecoder.decode(pasangan[0], "UTF-8"),
+                        pasangan.length > 1 ? java.net.URLDecoder.decode(pasangan[1], "UTF-8") : "");
+            }
+            String aksi = nilai.get("aksi"), jenis = nilai.get("jenis"), noRawat = nilai.get("rawat");
+            String tanggal = nilai.get("tgl"), jam = nilai.get("jam"), alasan = "";
+            if ("edit".equals(aksi)) {
+                if (!SoapVerifikasiDPJP.bolehVerifikasi(koneksi, jenis, noRawat, akses.getkode())) {
+                    JOptionPane.showMessageDialog(this, "Hanya DPJP penanggung jawab yang boleh mengedit SOAP.");
+                    return;
+                }
+                new EditSOAPDPJP(this, true, koneksi, jenis, noRawat, tanggal, jam, akses.getkode()).setVisible(true);
+                tampilSoapi();
+                return;
+            }
+            boolean cabut = "cabut".equals(aksi) || "cabutTanggal".equals(aksi) || "cabutSemuaTanggal".equals(aksi);
+            if (cabut) {
+                javax.swing.JTextArea area = new javax.swing.JTextArea(3, 32);
+                int jawab = JOptionPane.showConfirmDialog(this, new Object[]{"Konfirmasi pencabutan verifikasi SOAP. Isi alasan:", area},
+                        "Cabut Verifikasi SOAP", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
+                if (jawab != JOptionPane.OK_OPTION) return;
+                alasan = area.getText().trim();
+                if (alasan.isEmpty()) {
+                    JOptionPane.showMessageDialog(this, "Alasan pencabutan wajib diisi.");
+                    return;
+                }
+            }
+            // KONFIRMASI SEBELUM VERIFIKASI SOAP
+            boolean prosesVerifikasi = "verifikasi".equals(aksi)
+                    || "verifikasiTanggal".equals(aksi)
+                    || "verifikasiSemuaTanggal".equals(aksi);
+
+            if (prosesVerifikasi) {
+                String pesanKonfirmasi;
+
+                if ("verifikasiSemuaTanggal".equals(aksi)) {
+                    pesanKonfirmasi = "<html><b>Apakah Anda yakin ingin "
+                            + "memverifikasi semua SOAP pada tanggal "
+                            + tanggal + "?</b><br><br>"
+                            + "Sistem akan memverifikasi seluruh SOAP "
+                            + "yang menjadi tanggung jawab DPJP Anda."
+                            + "</html>";
+                } else if ("verifikasiTanggal".equals(aksi)) {
+                    pesanKonfirmasi = "<html><b>Apakah Anda yakin ingin "
+                            + "memverifikasi SOAP pada tanggal "
+                            + tanggal + "?</b><br><br>"
+                            + "Jenis Rawat: " + jenis
+                            + "<br>No. Rawat: " + noRawat
+                            + "</html>";
+                } else {
+                    pesanKonfirmasi = "<html><b>Apakah Anda yakin ingin "
+                            + "memverifikasi SOAP ini?</b><br><br>"
+                            + "Jenis Rawat: " + jenis
+                            + "<br>No. Rawat: " + noRawat
+                            + "<br>Tanggal: " + tanggal
+                            + "<br>Jam: " + jam
+                            + "</html>";
+                }
+
+                int konfirmasi = JOptionPane.showConfirmDialog(
+                        this,
+                        pesanKonfirmasi,
+                        "Konfirmasi Verifikasi SOAP",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE
+                );
+
+                if (konfirmasi != JOptionPane.YES_OPTION) {
+                    return;
+                }
+            }
+
+            int jumlah;
+            if ("verifikasiSemuaTanggal".equals(aksi)) {
+                jumlah = SoapVerifikasiDPJP.verifikasiTanggal(koneksi, "Ralan", "", tanggal, akses.getkode())
+                        + SoapVerifikasiDPJP.verifikasiTanggal(koneksi, "Ranap", "", tanggal, akses.getkode());
+            } else if ("cabutSemuaTanggal".equals(aksi)) {
+                jumlah = SoapVerifikasiDPJP.cabutTanggal(koneksi, "Ralan", "", tanggal, akses.getkode(), alasan)
+                        + SoapVerifikasiDPJP.cabutTanggal(koneksi, "Ranap", "", tanggal, akses.getkode(), alasan);
+            } else if ("verifikasiTanggal".equals(aksi)) {
+                jumlah = SoapVerifikasiDPJP.verifikasiTanggal(koneksi, jenis, noRawat, tanggal, akses.getkode());
+            } else if ("cabutTanggal".equals(aksi)) {
+                jumlah = SoapVerifikasiDPJP.cabutTanggal(koneksi, jenis, noRawat, tanggal, akses.getkode(), alasan);
+            } else if ("cabut".equals(aksi)) {
+                jumlah = SoapVerifikasiDPJP.cabutSatu(koneksi, jenis, noRawat, tanggal, jam, akses.getkode(), alasan) ? 1 : 0;
+            } else {
+                jumlah = SoapVerifikasiDPJP.verifikasiSatu(koneksi, jenis, noRawat, tanggal, jam, akses.getkode()) ? 1 : 0;
+            }
+            JOptionPane.showMessageDialog(this, jumlah > 0 ? "Proses verifikasi SOAP selesai." :
+                    "Tidak ada SOAP yang dapat diproses. Pastikan Anda DPJP yang bertanggung jawab.");
+            tampilSoapi();
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Proses verifikasi SOAP gagal: " + ex.getMessage());
+        }
+    }
+
+    private String linkVerifikasiSOAP(String aksi, String jenis, String noRawat, String tanggal, String jam) {
+        try {
+            return "soapverify://aksi?aksi=" + java.net.URLEncoder.encode(aksi, "UTF-8")
+                    + "&jenis=" + java.net.URLEncoder.encode(jenis, "UTF-8")
+                    + "&rawat=" + java.net.URLEncoder.encode(noRawat, "UTF-8")
+                    + "&tgl=" + java.net.URLEncoder.encode(tanggal, "UTF-8")
+                    + "&jam=" + java.net.URLEncoder.encode(jam == null ? "" : jam, "UTF-8");
+        } catch (Exception ex) { return "#"; }
+    }
+
+    private String tampilTombolTanggalSOAP(String tanggal) {
+        StringBuilder hasil = new StringBuilder("<tr><td colspan='9' align='left'>");
+        try {
+            int[] jumlah = SoapVerifikasiDPJP.hitungStatusTanggal(koneksi, tanggal, akses.getkode());
+            if (jumlah[0] > 0) {
+                hasil.append("<a href='").append(linkVerifikasiSOAP("verifikasiSemuaTanggal", "", "", tanggal, ""))
+                        .append("'><b style='background:#55a84f;color:white;padding:3px'>Verifikasi Semua SOAP di Tanggal : (")
+                        .append(tanggal).append(")</b></a> &nbsp; ");
+            }
+            if (jumlah[1] > 0) {
+                hasil.append("<a href='").append(linkVerifikasiSOAP("cabutSemuaTanggal", "", "", tanggal, ""))
+                        .append("'><b style='background:#d9534f;color:white;padding:3px'>Hapus Semua Verifikasi di Tanggal : (")
+                        .append(tanggal).append(")</b></a> &nbsp; ");
+            }
+            if (jumlah[0] == 0 && jumlah[1] == 0) {
+                hasil.append("<b title='Akun ").append(akses.getkode())
+                        .append(" bukan DPJP yang bertanggung jawab pada tanggal ini' style='background:#b9d8b6;color:white;padding:3px'>")
+                        .append("Verifikasi Semua SOAP di Tanggal : (").append(tanggal).append(")</b> ")
+                        .append("<b style='background:#e7b0ad;color:white;padding:3px'>Hapus Semua Verifikasi di Tanggal : (")
+                        .append(tanggal).append(")</b> <font color='gray'>Akun login bukan DPJP</font>");
+            }
+        } catch (Exception ex) {
+            hasil.append("<font color='red'>Status verifikasi tanggal tidak dapat dibaca</font>");
+        }
+        return hasil.append("</td></tr>").toString();
+    }
+
+    private String tampilVerifikasiSOAP(String jenis, String noRawat, String tanggal, String jam) {
+        try {
+            boolean dpjpLogin = SoapVerifikasiDPJP.bolehVerifikasi(koneksi, jenis, noRawat, akses.getkode());
+            SoapVerifikasiDPJP.DataVerifikasi data = SoapVerifikasiDPJP.cari(koneksi, jenis, noRawat, tanggal, jam);
+            if (data == null) {
+                return (dpjpLogin ? "<a href='" + linkVerifikasiSOAP("verifikasi", jenis, noRawat, tanggal, jam)
+                        + "'><b style='background:#55a84f;color:white;padding:3px'>Verifikasi</b></a>" :
+                        "<b title='Akun " + akses.getkode() + " bukan DPJP yang bertanggung jawab pada SOAP ini' style='background:#b9d8b6;color:white;padding:3px'>Verifikasi</b><br><font color='gray'>Login bukan DPJP</font>")
+                        + (dpjpLogin ? "<br><a href='" + linkVerifikasiSOAP("edit", jenis, noRawat, tanggal, jam)
+                        + "'><b style='background:#2878b8;color:white;padding:3px'>Edit SOAP</b></a>" : "");
+            }
+            String host = "http://" + koneksiDB.HOSTHYBRIDWEB() + ":" + koneksiDB.PORTWEB() + "/"
+                    + koneksiDB.HYBRIDWEB() + "/penggajian/";
+            try {
+                get = new GetMethod(host + "generateqrcode.php?kodedokter=" + data.kodeDokter.replace(" ", "_"));
+                http.executeMethod(get);
+            } finally { if (get != null) get.releaseConnection(); }
+            String nama = data.namaDokter == null ? data.kodeDokter : data.namaDokter;
+            return "<img width='90' height='90' src='" + host + "temp/" + data.kodeDokter + ".png'/><br>"
+                    + nama + "<br>" + data.waktu + (dpjpLogin ? "<br><a href='"
+                    + linkVerifikasiSOAP("cabut", jenis, noRawat, tanggal, jam)
+                    + "'><b style='background:#d9534f;color:white;padding:3px'>Hapus Verifikasi</b></a>" : "")
+                    + (dpjpLogin ? "<br><a href='" + linkVerifikasiSOAP("edit", jenis, noRawat, tanggal, jam)
+                    + "'><b style='background:#2878b8;color:white;padding:3px'>Edit SOAP</b></a>" : "");
+        } catch (Exception ex) {
+            return "<font color='red'>Status verifikasi belum tersedia</font>";
+        }
     }
 
     private void tampilPembelian() {

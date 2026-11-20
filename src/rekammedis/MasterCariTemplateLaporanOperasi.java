@@ -49,8 +49,10 @@ public final class MasterCariTemplateLaporanOperasi extends javax.swing.JDialog 
     public MasterCariTemplateLaporanOperasi(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
         initComponents();
-        this.setLocation(10,2);
-        setSize(656,250);
+        // Ukuran diperbesar agar daftar template dan isi template terbaca.
+        setSize(1100,620);
+        setMinimumSize(new Dimension(900,500));
+        setLocationRelativeTo(parent);
 
         Object[] row={"No.Template","Nama Operasi","Diagnosis Pre-operatif","Diagnosis Post-operatif","Jaringan di-Eksisi / -Insisi","Dikirim PA","Template Laporan Operasi"};
         tabMode=new DefaultTableModel(null,row){
@@ -110,8 +112,9 @@ public final class MasterCariTemplateLaporanOperasi extends javax.swing.JDialog 
         Template = new widget.TextArea();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
-        setUndecorated(true);
-        setResizable(false);
+        // Tampilkan title bar dan izinkan pengguna mengubah ukuran jendela.
+        setUndecorated(false);
+        setResizable(true);
         addWindowListener(new java.awt.event.WindowAdapter() {
             public void windowActivated(java.awt.event.WindowEvent evt) {
                 formWindowActivated(evt);

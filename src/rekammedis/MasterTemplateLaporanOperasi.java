@@ -155,7 +155,7 @@ public class MasterTemplateLaporanOperasi extends javax.swing.JDialog {
         FormInput.setBackground(new java.awt.Color(255, 255, 255));
         FormInput.setBorder(null);
         FormInput.setName("FormInput"); // NOI18N
-        FormInput.setPreferredSize(new java.awt.Dimension(700, 613));
+        FormInput.setPreferredSize(new java.awt.Dimension(1140, 700));
         FormInput.setLayout(null);
 
         label12.setText("No.Template :");
@@ -211,7 +211,7 @@ public class MasterTemplateLaporanOperasi extends javax.swing.JDialog {
         scrollPane2.setViewportView(Template);
 
         FormInput.add(scrollPane2);
-        scrollPane2.setBounds(16, 120, 670, 480);
+        scrollPane2.setBounds(16, 120, 1100, 550);
 
         DiagnosisPostOp.setName("DiagnosisPostOp"); // NOI18N
         DiagnosisPostOp.setPreferredSize(new java.awt.Dimension(207, 23));

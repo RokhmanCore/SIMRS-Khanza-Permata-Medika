@@ -14879,7 +14879,8 @@ private void BtnEditKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_B
             model = new javax.swing.table.DefaultTableModel(
                 new Object[]{"No.","Tgl. Operasi","No. Rawat","No. RM",
                     "Nama Pasien","Operator 1","Operasi","Mulai",
-                    "Selesai","Durasi (menit)","Status Laporan"}, 0) {
+                    "Selesai","Durasi (menit)","Status Laporan",
+                    "Jenis Rawat"}, 0) {
                 @Override
                 public boolean isCellEditable(int row, int col) {
                     return false;
@@ -14892,7 +14893,7 @@ private void BtnEditKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_B
                 javax.swing.ListSelectionModel.SINGLE_SELECTION);
             tabel.setRowHeight(22);
 
-            int[] widths = {45,145,155,75,190,160,220,145,145,110,140};
+            int[] widths = {45,145,155,75,190,160,220,145,145,110,140,100};
             for (int i=0; i<widths.length; i++) {
                 tabel.getColumnModel().getColumn(i)
                     .setPreferredWidth(widths[i]);
@@ -14903,12 +14904,12 @@ private void BtnEditKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_B
 
             javax.swing.JPopupMenu popup = new javax.swing.JPopupMenu();
             javax.swing.JMenuItem laporan =
-                new javax.swing.JMenuItem("Laporan Operasi Pasien");
+                new javax.swing.JMenuItem("Ubah Laporan Operasi Pasien");
             laporan.addActionListener(e -> bukaLaporanOperasi());
             popup.add(laporan);
             
             javax.swing.JMenuItem cetak =
-                new javax.swing.JMenuItem("Cetak PDF Laporan Operasi Pasien");
+                new javax.swing.JMenuItem("Laporan Operasi Pasien");
             cetak.addActionListener(e -> cetakLaporanOperasi());
             popup.add(cetak);
 tabel.setComponentPopupMenu(popup);
@@ -14945,7 +14946,8 @@ tabel.setComponentPopupMenu(popup);
                 "ELSE NULL END AS durasi," +
                 "CASE WHEN lo.no_rawat IS NULL " +
                 "THEN 'Belum ada laporan' " +
-                "ELSE 'Sudah ada laporan' END AS status_laporan " +
+                "ELSE 'Sudah ada laporan' END AS status_laporan," +
+                "rp.status_lanjut AS jenis_rawat " +
                 "FROM operasi o " +
                 "INNER JOIN reg_periksa rp ON rp.no_rawat=o.no_rawat " +
                 "INNER JOIN pasien p ON p.no_rkm_medis=rp.no_rkm_medis " +
@@ -14953,15 +14955,15 @@ tabel.setComponentPopupMenu(popup);
                 "LEFT JOIN paket_operasi po ON po.kode_paket=o.kode_paket " +
                 "LEFT JOIN laporan_operasi lo " +
                 "ON lo.no_rawat=o.no_rawat AND lo.tanggal=o.tgl_operasi " +
-                "WHERE o.no_rawat=? " +
+                "WHERE rp.no_rkm_medis=? " +
                 "ORDER BY o.tgl_operasi DESC,o.no_rawat";
 
-            String noRawatAktif = TNoRw.getText().trim();
-            if (noRawatAktif.isEmpty()) return;
+            String noRMMAktif = TNoRM.getText().trim();
+            if (noRMMAktif.isEmpty()) return;
 
             try (java.sql.PreparedStatement psTab =
                     koneksi.prepareStatement(sql)) {
-                psTab.setString(1,noRawatAktif);
+                psTab.setString(1,noRMMAktif);
 
                 try (java.sql.ResultSet r = psTab.executeQuery()) {
                     int no = 0;
@@ -14987,7 +14989,8 @@ tabel.setComponentPopupMenu(popup);
                             mulai == null ? "" : mulai.toString(),
                             selesai == null ? "" : selesai.toString(),
                             durasi == null ? "Periksa waktu" : durasi,
-                            r.getString("status_laporan")
+                            r.getString("status_laporan"),
+                            r.getString("jenis_rawat")
                         });
                     }
                 }

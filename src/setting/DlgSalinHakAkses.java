@@ -7,6 +7,14 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.FlowLayout;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -23,7 +31,12 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
+import javax.swing.DefaultListModel;
 import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JPopupMenu;
+import javax.swing.SwingConstants;
+import javax.swing.plaf.basic.BasicArrowButton;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -349,8 +362,8 @@ public class DlgSalinHakAkses extends JDialog {
     private final String[] label;
     private final Runnable onSelesai;
 
-    private final JComboBox<Pengguna> cmbSumber = new JComboBox<Pengguna>();
-    private final JComboBox<Pengguna> cmbTujuan = new JComboBox<Pengguna>();
+    private final PilihPengguna cmbSumber;
+    private final PilihPengguna cmbTujuan;
     private final JComboBox<String> cmbFilter = new JComboBox<String>(new String[]{"Berbeda", "Semua", DITAMBAH, DICABUT});
     private final JTextField txtCari = new JTextField();
     private final JLabel lblRingkasan = new JLabel(" ");
@@ -401,23 +414,18 @@ public class DlgSalinHakAkses extends JDialog {
         this.onSelesai = onSelesai;
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
+        List<Pengguna> daftarPengguna = new ArrayList<Pengguna>();
         Pengguna awal = null;
         for (String[] u : users) {
             Pengguna p = new Pengguna(u[0], u[1], u[2]);
-            cmbSumber.addItem(p);
-            cmbTujuan.addItem(p);
+            daftarPengguna.add(p);
             if (idTujuan != null && idTujuan.equals(p.id)) {
                 awal = p;
             }
         }
-        cmbSumber.setSelectedIndex(-1);
-        if (awal != null) {
-            cmbTujuan.setSelectedItem(awal);
-        } else {
-            cmbTujuan.setSelectedIndex(-1);
-        }
-        cmbSumber.setMaximumRowCount(20);
-        cmbTujuan.setMaximumRowCount(20);
+        cmbSumber = new PilihPengguna(daftarPengguna, () -> bandingkan());
+        cmbTujuan = new PilihPengguna(daftarPengguna, () -> bandingkan());
+        cmbTujuan.setPengguna(awal);
 
         susunTampilan();
         pasangAksi();
@@ -523,8 +531,6 @@ public class DlgSalinHakAkses extends JDialog {
     }
 
     private void pasangAksi() {
-        cmbSumber.addActionListener((ActionEvent e) -> bandingkan());
-        cmbTujuan.addActionListener((ActionEvent e) -> bandingkan());
         cmbFilter.addActionListener((ActionEvent e) -> terapkanFilter());
         txtCari.getDocument().addDocumentListener(new DocumentListener() {
             @Override
@@ -546,6 +552,248 @@ public class DlgSalinHakAkses extends JDialog {
         btnTutup.addActionListener((ActionEvent e) -> dispose());
         getRootPane().registerKeyboardAction((ActionEvent e) -> dispose(),
                 KeyStroke.getKeyStroke("ESCAPE"), JComponent.WHEN_IN_FOCUSED_WINDOW);
+    }
+
+    /**
+     * Pilihan user dengan pencarian: ketik sebagian ID atau nama (beberapa kata boleh, urutan bebas)
+     * untuk menyaring daftar; panah atas/bawah + Enter atau klik untuk memilih; Esc menutup daftar.
+     */
+    static final class PilihPengguna extends JPanel {
+        private final List<Pengguna> semua;
+        private final Runnable onUbah;
+        private final JTextField teks;
+        private final BasicArrowButton btnPanah = new BasicArrowButton(SwingConstants.SOUTH);
+        private final DefaultListModel<Pengguna> model = new DefaultListModel<Pengguna>();
+        private final JList<Pengguna> daftar = new JList<Pengguna>(model);
+        private final JPopupMenu popup = new JPopupMenu();
+        private Pengguna terpilih = null;
+        private boolean internal = false;
+        private int barisPopup = -1;
+
+        PilihPengguna(List<Pengguna> semua, Runnable onUbah) {
+            super(new BorderLayout());
+            this.semua = semua;
+            this.onUbah = onUbah;
+            teks = new JTextField() {
+                @Override
+                protected void paintComponent(Graphics g) {
+                    super.paintComponent(g);
+                    if (getText().isEmpty() && !hasFocus()) {
+                        g.setColor(Color.GRAY);
+                        g.setFont(getFont());
+                        g.drawString("Ketik ID atau nama untuk mencari...", 4,
+                                (getHeight() + g.getFontMetrics().getAscent() - g.getFontMetrics().getDescent()) / 2);
+                    }
+                }
+            };
+            teks.setToolTipText("Ketik sebagian ID atau nama user untuk mencari");
+            add(teks, BorderLayout.CENTER);
+            add(btnPanah, BorderLayout.EAST);
+
+            daftar.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
+            daftar.setFixedCellHeight(20);
+            daftar.setFocusable(false);
+            popup.setFocusable(false);
+            popup.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+
+            teks.getDocument().addDocumentListener(new DocumentListener() {
+                @Override
+                public void insertUpdate(DocumentEvent e) {
+                    berubah();
+                }
+
+                @Override
+                public void removeUpdate(DocumentEvent e) {
+                    berubah();
+                }
+
+                @Override
+                public void changedUpdate(DocumentEvent e) {
+                }
+            });
+            teks.addKeyListener(new KeyAdapter() {
+                @Override
+                public void keyPressed(KeyEvent e) {
+                    int kode = e.getKeyCode();
+                    if (kode == KeyEvent.VK_DOWN) {
+                        if (!popup.isVisible()) {
+                            saring(teks.getText());
+                        } else {
+                            geser(1);
+                        }
+                        e.consume();
+                    } else if (kode == KeyEvent.VK_UP) {
+                        if (popup.isVisible()) {
+                            geser(-1);
+                        }
+                        e.consume();
+                    } else if (kode == KeyEvent.VK_ENTER) {
+                        if (popup.isVisible() && model.size() > 0) {
+                            int idx = daftar.getSelectedIndex();
+                            pilih(model.get(idx < 0 ? 0 : idx));
+                            e.consume();
+                        }
+                    } else if (kode == KeyEvent.VK_ESCAPE) {
+                        if (popup.isVisible()) {
+                            popup.setVisible(false);
+                            e.consume();
+                        }
+                    }
+                }
+            });
+            teks.addFocusListener(new FocusAdapter() {
+                @Override
+                public void focusGained(FocusEvent e) {
+                    teks.selectAll();
+                }
+
+                @Override
+                public void focusLost(FocusEvent e) {
+                    popup.setVisible(false);
+                    if (teks.getText().trim().isEmpty() && terpilih != null) {
+                        // kolom sengaja dikosongkan: pilihan dihapus
+                        terpilih = null;
+                        tampilkanTerpilih();
+                        onUbah.run();
+                        return;
+                    }
+                    tampilkanTerpilih();
+                }
+            });
+            daftar.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseReleased(MouseEvent e) {
+                    int idx = daftar.locationToIndex(e.getPoint());
+                    if (idx >= 0 && idx < model.size()) {
+                        pilih(model.get(idx));
+                    }
+                }
+            });
+            daftar.addMouseMotionListener(new MouseAdapter() {
+                @Override
+                public void mouseMoved(MouseEvent e) {
+                    int idx = daftar.locationToIndex(e.getPoint());
+                    if (idx >= 0 && idx < model.size()) {
+                        daftar.setSelectedIndex(idx);
+                    }
+                }
+            });
+            btnPanah.addActionListener((ActionEvent e) -> {
+                if (popup.isVisible()) {
+                    popup.setVisible(false);
+                } else {
+                    teks.requestFocusInWindow();
+                    saring("");
+                }
+            });
+        }
+
+        Pengguna getPengguna() {
+            return terpilih;
+        }
+
+        @Override
+        public boolean requestFocusInWindow() {
+            return teks.requestFocusInWindow();
+        }
+
+        /** Mengatur pilihan tanpa memicu perbandingan. */
+        void setPengguna(Pengguna p) {
+            terpilih = p;
+            tampilkanTerpilih();
+        }
+
+        @Override
+        public void setFont(Font f) {
+            super.setFont(f);
+            if (teks != null) {
+                teks.setFont(f);
+                daftar.setFont(f);
+            }
+        }
+
+        /** Cocok bila semua kata pada kueri ada di teks pengguna (tanpa membedakan huruf besar/kecil). */
+        static boolean cocok(Pengguna p, String kueri) {
+            String target = p.toString().toLowerCase();
+            for (String k : kueri.trim().toLowerCase().split("\\s+")) {
+                if (!k.isEmpty() && !target.contains(k)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private void tampilkanTerpilih() {
+            internal = true;
+            try {
+                teks.setText(terpilih == null ? "" : terpilih.toString());
+                teks.setForeground(Color.BLACK);
+            } finally {
+                internal = false;
+            }
+        }
+
+        private void berubah() {
+            if (internal) {
+                return;
+            }
+            saring(teks.getText());
+        }
+
+        private void saring(String kueri) {
+            model.clear();
+            for (Pengguna p : semua) {
+                if (cocok(p, kueri)) {
+                    model.addElement(p);
+                }
+            }
+            teks.setForeground(model.isEmpty() ? Color.RED : Color.BLACK);
+            if (model.isEmpty()) {
+                popup.setVisible(false);
+                return;
+            }
+            int sel = terpilih != null ? model.indexOf(terpilih) : -1;
+            daftar.setSelectedIndex(sel >= 0 ? sel : 0);
+            int baris = Math.min(10, model.size());
+            if (popup.isVisible() && baris != barisPopup) {
+                // ukuran popup berubah: tutup lalu buka lagi agar ukuran dan gambar ikut diperbarui
+                popup.setVisible(false);
+            }
+            if (!popup.isVisible()) {
+                popup.removeAll();
+                JScrollPane sp = new JScrollPane(daftar);
+                sp.setPreferredSize(new Dimension(Math.max(teks.getWidth() + btnPanah.getWidth(), 200), baris * 20 + 4));
+                popup.add(sp);
+                barisPopup = baris;
+                popup.show(teks, 0, teks.getHeight());
+            }
+            daftar.revalidate();
+            daftar.repaint();
+            daftar.ensureIndexIsVisible(daftar.getSelectedIndex());
+        }
+
+        private void geser(int arah) {
+            int n = model.size();
+            if (n == 0) {
+                return;
+            }
+            int idx = Math.max(0, Math.min(n - 1, daftar.getSelectedIndex() + arah));
+            daftar.setSelectedIndex(idx);
+            daftar.ensureIndexIsVisible(idx);
+        }
+
+        private void pilih(Pengguna p) {
+            popup.setVisible(false);
+            boolean beda = terpilih == null || !terpilih.id.equals(p.id);
+            terpilih = p;
+            tampilkanTerpilih();
+            if (teks.hasFocus()) {
+                teks.selectAll();
+            }
+            if (beda) {
+                onUbah.run();
+            }
+        }
     }
 
     // ---------------------------------------------------------------- logika murni (dapat diuji)
@@ -620,8 +868,8 @@ public class DlgSalinHakAkses extends JDialog {
         jmlCabut = 0;
         btnSalin.setEnabled(false);
 
-        Pengguna s = (Pengguna) cmbSumber.getSelectedItem();
-        Pengguna t = (Pengguna) cmbTujuan.getSelectedItem();
+        Pengguna s = cmbSumber.getPengguna();
+        Pengguna t = cmbTujuan.getPengguna();
         if (s == null || t == null) {
             lblRingkasan.setText("Pilih user Sumber dan Tujuan.");
             return;
@@ -685,8 +933,8 @@ public class DlgSalinHakAkses extends JDialog {
         if (statusKolom == null || idSumber == null || idTujuan == null) {
             return;
         }
-        Pengguna s = (Pengguna) cmbSumber.getSelectedItem();
-        Pengguna t = (Pengguna) cmbTujuan.getSelectedItem();
+        Pengguna s = cmbSumber.getPengguna();
+        Pengguna t = cmbTujuan.getPengguna();
         if (s == null || t == null || !s.id.equals(idSumber) || !t.id.equals(idTujuan)) {
             bandingkan();
             return;

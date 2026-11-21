@@ -216,6 +216,7 @@ public final class DlgRawatInap extends javax.swing.JDialog {
         super(parent, modal);
         initComponents();
         initRawatInap();
+        initCariMenu();
     TabRawat.addTab("Data Operasi", new PanelDataLamaOperasi());
         panelRiwayatPerawatan = new PanelRiwayatRalan(koneksi, false);
         panelRiwayatPerawatan.setOperationEditHandler((noRawat, tanggalOperasi) -> {
@@ -10572,7 +10573,8 @@ private void BtnEditKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_B
             tinggi=tinggi+24;
         }
         FormMenu.setPreferredSize(new Dimension(195,(tinggi+10)));
-        
+        terapkanFilterMenu(true);
+
         if(akses.getjml2()>=1){
             KdPeg.setText(akses.getkode());
             TPegawai.setText(Sequel.CariPegawai(KdPeg.getText()));
@@ -10971,16 +10973,116 @@ private void BtnEditKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_B
         if(ChkAccor.isSelected()==true){
             ChkAccor.setVisible(false);
             PanelAccor.setPreferredSize(new Dimension(205,HEIGHT));
-            FormMenu.setVisible(true); 
+            FormMenu.setVisible(true);
+            if(panelCariMenu!=null){
+                panelCariMenu.setVisible(true);
+            }
             ChkAccor.setVisible(true);
-        }else if(ChkAccor.isSelected()==false){  
+        }else if(ChkAccor.isSelected()==false){
             ChkAccor.setVisible(false);
             PanelAccor.setPreferredSize(new Dimension(15,HEIGHT));
-            FormMenu.setVisible(false);    
+            FormMenu.setVisible(false);
+            if(panelCariMenu!=null){
+                panelCariMenu.setVisible(false);
+            }
             ChkAccor.setVisible(true);
         }
     }
-    
+
+    private static final String MENU_AKSES_VISIBLE="aksesVisible";
+    private javax.swing.JPanel panelCariMenu;
+    private widget.TextBox TCariMenu;
+
+    /** Menambahkan kolom pencarian di atas daftar menu (panel kiri). */
+    private void initCariMenu(){
+        TCariMenu=new widget.TextBox();
+        TCariMenu.setName("TCariMenu");
+        TCariMenu.setFont(new java.awt.Font("Tahoma",0,11));
+        TCariMenu.setToolTipText("Ketik nama menu untuk menyaring daftar (Esc = hapus)");
+        TCariMenu.getDocument().addDocumentListener(new javax.swing.event.DocumentListener(){
+            @Override
+            public void insertUpdate(DocumentEvent e){
+                terapkanFilterMenu(false);
+            }
+            @Override
+            public void removeUpdate(DocumentEvent e){
+                terapkanFilterMenu(false);
+            }
+            @Override
+            public void changedUpdate(DocumentEvent e){
+                terapkanFilterMenu(false);
+            }
+        });
+        TCariMenu.addKeyListener(new java.awt.event.KeyAdapter(){
+            @Override
+            public void keyPressed(KeyEvent e){
+                if(e.getKeyCode()==KeyEvent.VK_ESCAPE){
+                    TCariMenu.setText("");
+                }
+            }
+        });
+
+        javax.swing.JLabel lbl=new javax.swing.JLabel("Cari Menu : ");
+        lbl.setFont(new java.awt.Font("Tahoma",0,11));
+
+        panelCariMenu=new javax.swing.JPanel(new java.awt.BorderLayout(2,0));
+        panelCariMenu.setBackground(java.awt.Color.WHITE);
+        panelCariMenu.setBorder(javax.swing.BorderFactory.createEmptyBorder(2,3,2,3));
+        panelCariMenu.setPreferredSize(new Dimension(195,26));
+        panelCariMenu.add(lbl,java.awt.BorderLayout.WEST);
+        panelCariMenu.add(TCariMenu,java.awt.BorderLayout.CENTER);
+
+        // Bungkus ScrollMenu agar kolom pencarian berada di atas daftar menu
+        javax.swing.JPanel wrapper=new javax.swing.JPanel(new java.awt.BorderLayout());
+        wrapper.setBackground(java.awt.Color.WHITE);
+        PanelAccor.remove(ScrollMenu);
+        wrapper.add(panelCariMenu,java.awt.BorderLayout.NORTH);
+        wrapper.add(ScrollMenu,java.awt.BorderLayout.CENTER);
+        PanelAccor.add(wrapper,java.awt.BorderLayout.CENTER);
+        PanelAccor.revalidate();
+        PanelAccor.repaint();
+    }
+
+    /**
+     * Menyaring tombol menu berdasarkan teks pada kolom pencarian.
+     * Tombol yang disembunyikan karena hak akses tidak pernah ditampilkan oleh filter.
+     * @param simpanAkses true bila visibilitas saat ini adalah hasil hak akses (dipanggil dari isCek)
+     */
+    private void terapkanFilterMenu(boolean simpanAkses){
+        if(TCariMenu==null){
+            return;
+        }
+        String[] kata=TCariMenu.getText().trim().toLowerCase().split("\\s+");
+        int jumlah=0;
+        for(java.awt.Component c:FormMenu.getComponents()){
+            if(!(c instanceof javax.swing.JComponent)){
+                continue;
+            }
+            javax.swing.JComponent jc=(javax.swing.JComponent)c;
+            if(simpanAkses||jc.getClientProperty(MENU_AKSES_VISIBLE)==null){
+                jc.putClientProperty(MENU_AKSES_VISIBLE,jc.isVisible());
+            }
+            boolean boleh=Boolean.TRUE.equals(jc.getClientProperty(MENU_AKSES_VISIBLE));
+            if(boleh&&c instanceof javax.swing.AbstractButton){
+                String teks=((javax.swing.AbstractButton)c).getText();
+                teks=teks==null?"":teks.toLowerCase();
+                for(String k:kata){
+                    if(!k.isEmpty()&&!teks.contains(k)){
+                        boleh=false;
+                        break;
+                    }
+                }
+            }
+            jc.setVisible(boleh);
+            if(boleh){
+                jumlah++;
+            }
+        }
+        FormMenu.setPreferredSize(new Dimension(195,(jumlah*24)+10));
+        FormMenu.revalidate();
+        FormMenu.repaint();
+    }
+
     private void initRawatInap(){
         BtnSkorBromagePascaAnestesi = new widget.Button();
         BtnSkorBromagePascaAnestesi.setIcon(new javax.swing.ImageIcon(getClass().getResource("/picture/item.png"))); 

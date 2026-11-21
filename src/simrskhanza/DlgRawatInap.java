@@ -186,6 +186,7 @@ import rekammedis.RMDataSkriningGiziKehamilan;
 import rekammedis.RMHasilPemeriksaanUSGAbdomen;
 import rekammedis.RMHasilPersalinanTOLAC;
 import rekammedis.RMReaksiTransfusi;
+import rekammedis.PanelRiwayatRalan;
 
 /**
  *
@@ -198,6 +199,7 @@ public final class DlgRawatInap extends javax.swing.JDialog {
     private validasi Valid=new validasi();
     private Jurnal jur=new Jurnal();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private PanelRiwayatRalan panelRiwayatPerawatan;
     private volatile boolean ceksukses = false;
     private Connection koneksi=koneksiDB.condb();
     private PreparedStatement ps,ps2,ps3,ps4,ps5,ps6;
@@ -215,10 +217,28 @@ public final class DlgRawatInap extends javax.swing.JDialog {
         initComponents();
         initRawatInap();
     TabRawat.addTab("Data Operasi", new PanelDataLamaOperasi());
+        panelRiwayatPerawatan = new PanelRiwayatRalan(koneksi, false);
+        panelRiwayatPerawatan.setOperationEditHandler((noRawat, tanggalOperasi) -> {
+            DlgCariTagihanOperasi formOperasi = new DlgCariTagihanOperasi(null, false);
+            formOperasi.bukaLaporanOperasiDariDataLama(noRawat, tanggalOperasi);
+        });
+        TabRawat.addTab("Riwayat Perawatan", panelRiwayatPerawatan);
         TabRawat.addChangeListener(e -> {
             if (TabRawat.getSelectedComponent() instanceof PanelDataLamaOperasi) {
                 ((PanelDataLamaOperasi) TabRawat.getSelectedComponent()).tampil();
+            } else if (TabRawat.getSelectedComponent() == panelRiwayatPerawatan) {
+                panelRiwayatPerawatan.setNoRawat(TNoRw.getText());
             }
+        });
+        TNoRw.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            private void updateHistory() {
+                if (panelRiwayatPerawatan != null && TabRawat.getSelectedComponent() == panelRiwayatPerawatan) {
+                    panelRiwayatPerawatan.setNoRawat(TNoRw.getText());
+                }
+            }
+            @Override public void insertUpdate(javax.swing.event.DocumentEvent event) { updateHistory(); }
+            @Override public void removeUpdate(javax.swing.event.DocumentEvent event) { updateHistory(); }
+            @Override public void changedUpdate(javax.swing.event.DocumentEvent event) { updateHistory(); }
         });
 
         this.setLocation(8,1);
@@ -12917,6 +12937,9 @@ tabel.setComponentPopupMenu(popup);
 
     public void dispose() {
         executor.shutdownNow();
+        if (panelRiwayatPerawatan != null) {
+            panelRiwayatPerawatan.dispose();
+        }
         super.dispose();
     }
 }

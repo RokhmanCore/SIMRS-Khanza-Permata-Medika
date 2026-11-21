@@ -194,6 +194,7 @@ import rekammedis.RMPenilaianUlangNyeri;
 import rekammedis.RMReaksiTransfusi;
 import rekammedis.RMRekonsiliasiObat;
 import rekammedis.RMRiwayatPerawatan;
+import rekammedis.PanelRiwayatRalan;
 import rekammedis.RMSignInSebelumAnastesi;
 import rekammedis.RMSignOutSebelumMenutupLuka;
 import rekammedis.RMSkriningAdiksiNikotin;
@@ -256,6 +257,7 @@ public final class DlgRawatJalan extends javax.swing.JDialog {
     private double ttljmdokter=0,ttljmperawat=0,ttlkso=0,ttljasasarana=0,ttlbhp=0,ttlmenejemen=0,ttlpendapatan=0;
     private Jurnal jur=new Jurnal();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private PanelRiwayatRalan panelRiwayatPerawatan;
     private volatile boolean ceksukses = false;
     private DlgPeresepanDokter resepobat;
 
@@ -267,12 +269,13 @@ public final class DlgRawatJalan extends javax.swing.JDialog {
         initComponents();
 
         TabRawat.addTab("Data Operasi", new PanelDataLamaOperasi());
-        TabRawat.addTab("Riwayat Perawatan", new PanelRiwayatPerawatan());
+        panelRiwayatPerawatan = new PanelRiwayatRalan(koneksi);
+        TabRawat.addTab("Riwayat Perawatan", panelRiwayatPerawatan);
         TabRawat.addChangeListener(e -> {
             if (TabRawat.getSelectedComponent() instanceof PanelDataLamaOperasi) {
                 ((PanelDataLamaOperasi) TabRawat.getSelectedComponent()).tampil();
-            } else if (TabRawat.getSelectedComponent() instanceof PanelRiwayatPerawatan) {
-                ((PanelRiwayatPerawatan) TabRawat.getSelectedComponent()).tampil();
+            } else if (TabRawat.getSelectedComponent() == panelRiwayatPerawatan) {
+                panelRiwayatPerawatan.setNoRawat(TNoRw.getText());
             }
         });
 
@@ -14871,116 +14874,6 @@ private void BtnEditKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_B
     }
     
 
-    /** Tab riwayat kunjungan pasien lintas rawat jalan dan rawat inap. */
-    private class PanelRiwayatPerawatan extends javax.swing.JPanel {
-        private final javax.swing.table.DefaultTableModel model;
-        private final javax.swing.JTable tabel;
-        private final javax.swing.JLabel info;
-
-        PanelRiwayatPerawatan() {
-            setLayout(new java.awt.BorderLayout(5,5));
-            javax.swing.JPanel header = new javax.swing.JPanel(
-                new java.awt.BorderLayout(5,5));
-            javax.swing.JLabel judul = new javax.swing.JLabel(
-                "Riwayat kunjungan pasien (terbaru ditampilkan lebih dahulu)");
-            judul.setBorder(javax.swing.BorderFactory.createEmptyBorder(6,8,6,8));
-            javax.swing.JButton detail = new javax.swing.JButton(
-                "Buka Riwayat Perawatan Lengkap");
-            detail.addActionListener(e -> bukaRiwayatLengkap());
-            header.add(judul,java.awt.BorderLayout.CENTER);
-            header.add(detail,java.awt.BorderLayout.EAST);
-            add(header,java.awt.BorderLayout.NORTH);
-
-            model = new javax.swing.table.DefaultTableModel(
-                new Object[]{"No.","Tanggal","Jam","No. Rawat","Poliklinik",
-                    "Dokter","Jenis Rawat","Status"},0) {
-                @Override public boolean isCellEditable(int row,int col) {
-                    return false;
-                }
-            };
-            tabel = new javax.swing.JTable(model);
-            tabel.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_OFF);
-            tabel.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
-            tabel.setRowHeight(22);
-            int[] widths = {45,110,75,150,190,190,100,110};
-            for(int i=0;i<widths.length;i++) {
-                tabel.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
-            }
-            add(new javax.swing.JScrollPane(tabel),java.awt.BorderLayout.CENTER);
-
-            info = new javax.swing.JLabel("Pilih kunjungan untuk melihat ringkasan.");
-            info.setBorder(javax.swing.BorderFactory.createEmptyBorder(6,8,6,8));
-            add(info,java.awt.BorderLayout.SOUTH);
-
-            tabel.getSelectionModel().addListSelectionListener(e -> {
-                if(!e.getValueIsAdjusting()) tampilInfo();
-            });
-            tabel.addMouseListener(new java.awt.event.MouseAdapter() {
-                @Override public void mouseClicked(java.awt.event.MouseEvent e) {
-                    if(e.getClickCount()==2) bukaRiwayatLengkap();
-                }
-            });
-        }
-
-        private void tampil() {
-            model.setRowCount(0);
-            String noRM = TNoRM.getText().trim();
-            if(noRM.isEmpty()) {
-                info.setText("Pilih pasien terlebih dahulu untuk menampilkan riwayat.");
-                return;
-            }
-            String sql = "SELECT rp.no_rawat,rp.tgl_registrasi,rp.jam_reg," +
-                "pl.nm_poli,d.nm_dokter,rp.status_lanjut,rp.stts " +
-                "FROM reg_periksa rp " +
-                "LEFT JOIN poliklinik pl ON pl.kd_poli=rp.kd_poli " +
-                "LEFT JOIN dokter d ON d.kd_dokter=rp.kd_dokter " +
-                "WHERE rp.no_rkm_medis=? " +
-                "ORDER BY rp.tgl_registrasi DESC,rp.jam_reg DESC";
-            try(java.sql.PreparedStatement psTab=koneksi.prepareStatement(sql)) {
-                psTab.setString(1,noRM);
-                try(java.sql.ResultSet rsTab=psTab.executeQuery()) {
-                    int no=0;
-                    while(rsTab.next()) {
-                        model.addRow(new Object[]{
-                            ++no,rsTab.getString("tgl_registrasi"),
-                            rsTab.getString("jam_reg"),rsTab.getString("no_rawat"),
-                            rsTab.getString("nm_poli"),rsTab.getString("nm_dokter"),
-                            rsTab.getString("status_lanjut"),rsTab.getString("stts")
-                        });
-                    }
-                }
-                info.setText("Total "+model.getRowCount()+" kunjungan untuk No. RM "+noRM+
-                    ". Klik dua kali atau gunakan tombol untuk membuka riwayat lengkap.");
-            } catch(java.sql.SQLException ex) {
-                info.setText("Gagal memuat riwayat perawatan: "+ex.getMessage());
-            }
-        }
-
-        private void tampilInfo() {
-            int row=tabel.getSelectedRow();
-            if(row<0) return;
-            int modelRow=tabel.convertRowIndexToModel(row);
-            info.setText("Kunjungan "+model.getValueAt(modelRow,1)+" "+
-                model.getValueAt(modelRow,2)+" | No. Rawat "+
-                model.getValueAt(modelRow,3)+" | "+model.getValueAt(modelRow,4)+
-                " | "+model.getValueAt(modelRow,5)+" | "+
-                model.getValueAt(modelRow,6));
-        }
-
-        private void bukaRiwayatLengkap() {
-            if(TNoRM.getText().trim().isEmpty()) {
-                javax.swing.JOptionPane.showMessageDialog(this,
-                    "Pilih pasien terlebih dahulu.");
-                return;
-            }
-            RMRiwayatPerawatan resume=new RMRiwayatPerawatan(null,true);
-            resume.setNoRm(TNoRM.getText(),TPasien.getText());
-            resume.setSize(internalFrame1.getWidth(),internalFrame1.getHeight());
-            resume.setLocationRelativeTo(internalFrame1);
-            resume.setVisible(true);
-        }
-    }
-
     /** Tab tambahan Data Operasi Rawat Jalan. */
     private class PanelDataLamaOperasi extends javax.swing.JPanel {
         private final javax.swing.table.DefaultTableModel model;
@@ -15177,6 +15070,9 @@ tabel.setComponentPopupMenu(popup);
     @Override
     public void dispose() {
         executor.shutdownNow();
+        if (panelRiwayatPerawatan != null) {
+            panelRiwayatPerawatan.dispose();
+        }
         super.dispose();
     }
 }

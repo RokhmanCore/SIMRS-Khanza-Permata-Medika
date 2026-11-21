@@ -194,6 +194,7 @@ import rekammedis.RMPenilaianUlangNyeri;
 import rekammedis.RMReaksiTransfusi;
 import rekammedis.RMRekonsiliasiObat;
 import rekammedis.RMRiwayatPerawatan;
+import rekammedis.PanelRiwayatRalan;
 import rekammedis.RMSignInSebelumAnastesi;
 import rekammedis.RMSignOutSebelumMenutupLuka;
 import rekammedis.RMSkriningAdiksiNikotin;
@@ -256,6 +257,7 @@ public final class DlgRawatJalan extends javax.swing.JDialog {
     private double ttljmdokter=0,ttljmperawat=0,ttlkso=0,ttljasasarana=0,ttlbhp=0,ttlmenejemen=0,ttlpendapatan=0;
     private Jurnal jur=new Jurnal();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private PanelRiwayatRalan panelRiwayatPerawatan;
     private volatile boolean ceksukses = false;
     private DlgPeresepanDokter resepobat;
 
@@ -267,9 +269,13 @@ public final class DlgRawatJalan extends javax.swing.JDialog {
         initComponents();
 
         TabRawat.addTab("Data Operasi", new PanelDataLamaOperasi());
+        panelRiwayatPerawatan = new PanelRiwayatRalan(koneksi);
+        TabRawat.addTab("Riwayat Perawatan", panelRiwayatPerawatan);
         TabRawat.addChangeListener(e -> {
             if (TabRawat.getSelectedComponent() instanceof PanelDataLamaOperasi) {
                 ((PanelDataLamaOperasi) TabRawat.getSelectedComponent()).tampil();
+            } else if (TabRawat.getSelectedComponent() == panelRiwayatPerawatan) {
+                panelRiwayatPerawatan.setNoRawat(TNoRw.getText());
             }
         });
 
@@ -15064,6 +15070,9 @@ tabel.setComponentPopupMenu(popup);
     @Override
     public void dispose() {
         executor.shutdownNow();
+        if (panelRiwayatPerawatan != null) {
+            panelRiwayatPerawatan.dispose();
+        }
         super.dispose();
     }
 }

@@ -56,6 +56,7 @@ public class DlgUser extends javax.swing.JDialog {
     private DlgCariDokter dlgdokter;
     private DlgCariPetugas dlgpetugas;
     private DlgUpdateUser personal;
+    private widget.MenuItem MnBandingkanHakAkses;
 
     /** Creates new form DlgUser
      * @param parent
@@ -63,6 +64,7 @@ public class DlgUser extends javax.swing.JDialog {
     public DlgUser(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
         initComponents();
+        initMenuBandingkanHakAkses();
         
         Object[] row={"ID User","Nama User","Jabatan","Password","[J]ICD 10","[J]Obat Penyakit","[C]Dokter","[A]Jadwal Praktek","[C]Petugas","[M]Pasien","[A]Registrasi","[A]Tindakan Ralan",
                 "[A]Rawat Inap","[A]Tindakan Ranap","[A]Operasi","[A]Rujukan Keluar","[A]Rujukan Masuk","[A]Beri Obat, Alkes & BHP","[A]Resep Pulang",
@@ -5716,6 +5718,73 @@ private void BtnPrintKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_
             emptTeks();
         }else{Valid.pindah(evt, BtnSimpan, BtnHapus);}
     }//GEN-LAST:event_BtnBatalKeyPressed
+
+    /** Menambahkan menu "Bandingkan & Salin Hak Akses" di samping menu Copy Hak Akses (menu lama tetap ada). */
+    private void initMenuBandingkanHakAkses() {
+        MnBandingkanHakAkses=new widget.MenuItem();
+        MnBandingkanHakAkses.setFont(new java.awt.Font("Tahoma", 0, 11));
+        MnBandingkanHakAkses.setForeground(new java.awt.Color(50, 50, 50));
+        MnBandingkanHakAkses.setIcon(new javax.swing.ImageIcon(getClass().getResource("/picture/category.png")));
+        MnBandingkanHakAkses.setText("Bandingkan & Salin Hak Akses");
+        MnBandingkanHakAkses.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        MnBandingkanHakAkses.setHorizontalTextPosition(javax.swing.SwingConstants.RIGHT);
+        MnBandingkanHakAkses.setName("MnBandingkanHakAkses");
+        MnBandingkanHakAkses.setPreferredSize(new java.awt.Dimension(190, 26));
+        MnBandingkanHakAkses.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                MnBandingkanHakAksesActionPerformed();
+            }
+        });
+        jPopupMenu1.insert(MnBandingkanHakAkses,1);
+    }
+
+    private void MnBandingkanHakAksesActionPerformed() {
+        if(tabMode.getRowCount()==0){
+            JOptionPane.showMessageDialog(null,"Maaf, data user kosong...!!!!");
+            TCari.requestFocus();
+            return;
+        }
+        // semua user dari database (tabel utama bisa sedang tersaring oleh kata kunci pencarian)
+        java.util.List<String[]> users=new java.util.ArrayList<>();
+        setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.WAIT_CURSOR));
+        try {
+            PreparedStatement psUser=koneksi.prepareStatement("select AES_DECRYPT(user.id_user,'nur') from user order by AES_DECRYPT(user.id_user,'nur')");
+            try {
+                ResultSet rsUser=psUser.executeQuery();
+                try {
+                    while(rsUser.next()){
+                        String idUser=rsUser.getString(1);
+                        String namaUser=Sequel.CariDokter(idUser);
+                        if(namaUser.equals("")){
+                            namaUser=Sequel.CariPetugas(idUser);
+                        }
+                        users.add(new String[]{idUser,namaUser,""});
+                    }
+                } finally {
+                    rsUser.close();
+                }
+            } finally {
+                psUser.close();
+            }
+        } catch (Exception e) {
+            System.out.println("Notifikasi : "+e);
+            users.clear();
+            for(int r=0;r<tabMode.getRowCount();r++){
+                users.add(new String[]{
+                    String.valueOf(tabMode.getValueAt(r,0)),
+                    String.valueOf(tabMode.getValueAt(r,1)),
+                    String.valueOf(tabMode.getValueAt(r,2))
+                });
+            }
+        } finally {
+            setCursor(java.awt.Cursor.getDefaultCursor());
+        }
+        String[] label=new String[DlgSalinHakAkses.KOLOM.length];
+        for(int k=0;k<label.length;k++){
+            label[k]=(4+k)<tbUser.getColumnCount()?tbUser.getColumnName(4+k):DlgSalinHakAkses.KOLOM[k];
+        }
+        new DlgSalinHakAkses(this,users,label,TKd.getText().trim(),() -> tampil()).setVisible(true);
+    }
 
     private void MnCopyHakAksesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_MnCopyHakAksesActionPerformed
         if(tabMode.getRowCount()==0){

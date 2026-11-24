@@ -63,16 +63,59 @@ public final class SoapVerifikasiDPJP {
     private SoapVerifikasiDPJP() { }
 
     static boolean bolehVerifikasi(Connection koneksi, String jenis, String noRawat, String kdDokter) throws SQLException {
+        return bolehVerifikasiSOAP(koneksi, jenis, noRawat, kdDokter);
+    }
+
+    /**
+     * Hak edit SOAP hanya untuk DPJP penanggung jawab,
+     * bukan dokter yang memperoleh hak verifikasi melalui konsultasi.
+     */
+    static boolean bolehEditSOAP(Connection koneksi, String jenis, String noRawat, String kdDokter) throws SQLException {
         return dpjpBertanggungJawab(koneksi, jenis, noRawat, kdDokter);
     }
 
-    static boolean bolehVerifikasiTanggal(Connection koneksi, String tanggal, String kdDokter) throws SQLException {
-        String sql = "select 1 from pemeriksaan_ralan p inner join reg_periksa r on r.no_rawat=p.no_rawat "
-                + "where p.tgl_perawatan=? and r.kd_dokter=? union all "
-                + "select 1 from pemeriksaan_ranap p inner join dpjp_ranap d on d.no_rawat=p.no_rawat "
-                + "where p.tgl_perawatan=? and d.kd_dokter=? limit 1";
+    /**
+     * Memeriksa apakah ada SOAP aktif pada tanggal tersebut
+     * yang pencabutannya memang menjadi hak DPJP login.
+     */
+    static boolean adaVerifikasiDPJPTanggal(Connection koneksi, String tanggal, String kdDokter) throws SQLException {
+        String sql = "select 1 from pemeriksaan_ralan p "
+                + "inner join soap_verifikasi_dpjp v on v.jenis_rawat='Ralan' "
+                + "and v.no_rawat=p.no_rawat and v.tgl_perawatan=p.tgl_perawatan "
+                + "and v.jam_rawat=p.jam_rawat and v.status='Aktif' "
+                + "where p.tgl_perawatan=? "
+                + "and exists(select 1 from reg_periksa r where r.no_rawat=p.no_rawat and r.kd_dokter=?) "
+                + "union all "
+                + "select 1 from pemeriksaan_ranap p "
+                + "inner join soap_verifikasi_dpjp v on v.jenis_rawat='Ranap' "
+                + "and v.no_rawat=p.no_rawat and v.tgl_perawatan=p.tgl_perawatan "
+                + "and v.jam_rawat=p.jam_rawat and v.status='Aktif' "
+                + "where p.tgl_perawatan=? "
+                + "and exists(select 1 from dpjp_ranap d where d.no_rawat=p.no_rawat and d.kd_dokter=?) "
+                + "limit 1";
         try (PreparedStatement ps = koneksi.prepareStatement(sql)) {
-            ps.setString(1, tanggal); ps.setString(2, kdDokter); ps.setString(3, tanggal); ps.setString(4, kdDokter);
+            ps.setString(1, tanggal);
+            ps.setString(2, kdDokter);
+            ps.setString(3, tanggal);
+            ps.setString(4, kdDokter);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    static boolean bolehVerifikasiTanggal(Connection koneksi, String tanggal, String kdDokter) throws SQLException {
+        String sql = "select 1 from pemeriksaan_ralan p where p.tgl_perawatan=? and ("
+                + "exists(select 1 from reg_periksa r where r.no_rawat=p.no_rawat and r.kd_dokter=?) or "
+                + "exists(select 1 from konsultasi_medik km where km.no_rawat=p.no_rawat "
+                + "and km.kd_dokter_dikonsuli=? and km.jenis_permintaan='Konsultasi')) "
+                + "union all select 1 from pemeriksaan_ranap p where p.tgl_perawatan=? and ("
+                + "exists(select 1 from dpjp_ranap d where d.no_rawat=p.no_rawat and d.kd_dokter=?) or "
+                + "exists(select 1 from konsultasi_medik km where km.no_rawat=p.no_rawat "
+                + "and km.kd_dokter_dikonsuli=? and km.jenis_permintaan='Konsultasi')) limit 1";
+        try (PreparedStatement ps = koneksi.prepareStatement(sql)) {
+            ps.setString(1, tanggal); ps.setString(2, kdDokter); ps.setString(3, kdDokter);
+            ps.setString(4, tanggal); ps.setString(5, kdDokter); ps.setString(6, kdDokter);
             try (ResultSet rs = ps.executeQuery()) { return rs.next(); }
         }
     }
@@ -81,13 +124,18 @@ public final class SoapVerifikasiDPJP {
         String sql = "select sum(case when v.status='Aktif' then 0 else 1 end) belum, "
                 + "sum(case when v.status='Aktif' then 1 else 0 end) sudah from ("
                 + "select 'Ralan' jenis,p.no_rawat,p.tgl_perawatan,p.jam_rawat from pemeriksaan_ralan p "
-                + "inner join reg_periksa r on r.no_rawat=p.no_rawat where p.tgl_perawatan=? and r.kd_dokter=? "
+                + "where p.tgl_perawatan=? and (exists(select 1 from reg_periksa r where r.no_rawat=p.no_rawat and r.kd_dokter=?) "
+                + "or exists(select 1 from konsultasi_medik km where km.no_rawat=p.no_rawat "
+                + "and km.kd_dokter_dikonsuli=? and km.jenis_permintaan='Konsultasi')) "
                 + "union all select 'Ranap' jenis,p.no_rawat,p.tgl_perawatan,p.jam_rawat from pemeriksaan_ranap p "
-                + "inner join dpjp_ranap d on d.no_rawat=p.no_rawat where p.tgl_perawatan=? and d.kd_dokter=?"
+                + "where p.tgl_perawatan=? and (exists(select 1 from dpjp_ranap d where d.no_rawat=p.no_rawat and d.kd_dokter=?) "
+                + "or exists(select 1 from konsultasi_medik km where km.no_rawat=p.no_rawat "
+                + "and km.kd_dokter_dikonsuli=? and km.jenis_permintaan='Konsultasi'))"
                 + ") s left join soap_verifikasi_dpjp v on v.jenis_rawat=s.jenis and v.no_rawat=s.no_rawat "
                 + "and v.tgl_perawatan=s.tgl_perawatan and v.jam_rawat=s.jam_rawat";
         try (PreparedStatement ps = koneksi.prepareStatement(sql)) {
-            ps.setString(1, tanggal); ps.setString(2, kdDokter); ps.setString(3, tanggal); ps.setString(4, kdDokter);
+            ps.setString(1, tanggal); ps.setString(2, kdDokter); ps.setString(3, kdDokter);
+            ps.setString(4, tanggal); ps.setString(5, kdDokter); ps.setString(6, kdDokter);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) return new int[]{rs.getInt("belum"), rs.getInt("sudah")};
             }
@@ -170,7 +218,9 @@ public final class SoapVerifikasiDPJP {
 
     private static boolean ubahSatuDalamTransaksi(Connection koneksi, String jenis, String noRawat,
             String tanggal, String jam, String kdDokter, boolean verifikasi, String alasan) throws SQLException {
-        if (!dpjpBertanggungJawab(koneksi, jenis, noRawat, kdDokter)) return false;
+        if (verifikasi
+                ? !bolehVerifikasiSOAP(koneksi, jenis, noRawat, kdDokter)
+                : !dpjpBertanggungJawab(koneksi, jenis, noRawat, kdDokter)) return false;
         String sql = "select 1 from " + ("Ralan".equals(jenis) ? "pemeriksaan_ralan" : "pemeriksaan_ranap")
                 + " where no_rawat=? and tgl_perawatan=? and jam_rawat=? for update";
         try (PreparedStatement ps = koneksi.prepareStatement(sql)) {
@@ -210,8 +260,59 @@ public final class SoapVerifikasiDPJP {
         }
     }
 
+    /**
+ * Hak verifikasi SOAP:
+ * DPJP utama, DPJP Ranap untuk SOAP UGD pada no_rawat yang sama,
+ * atau dokter yang dikonsuli.
+ */
+private static boolean bolehVerifikasiSOAP(
+        Connection koneksi,
+        String jenis,
+        String noRawat,
+        String kdDokter) throws SQLException {
 
-    /** Edit SOAP dan cabut verifikasi lama dalam satu transaksi. */
+    // Hak DPJP sesuai jenis perawatan.
+    if (dpjpBertanggungJawab(koneksi, jenis, noRawat, kdDokter)) {
+        return true;
+    }
+
+    // DPJP Rawat Inap juga boleh memverifikasi SOAP UGD
+    // apabila tercatat sebagai DPJP pada nomor rawat yang sama.
+    if ("Ralan".equals(jenis)) {
+        String sqlRanap =
+                "select 1 from dpjp_ranap "
+              + "where no_rawat=? and kd_dokter=? limit 1";
+
+        try (PreparedStatement ps = koneksi.prepareStatement(sqlRanap)) {
+            ps.setString(1, noRawat);
+            ps.setString(2, kdDokter);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    // Hak dokter yang menerima konsultasi tetap dipertahankan.
+    String sql = "select 1 from konsultasi_medik "
+               + "where no_rawat=? "
+               + "and kd_dokter_dikonsuli=? "
+               + "and jenis_permintaan='Konsultasi' limit 1";
+
+    try (PreparedStatement ps = koneksi.prepareStatement(sql)) {
+        ps.setString(1, noRawat);
+        ps.setString(2, kdDokter);
+
+        try (ResultSet rs = ps.executeQuery()) {
+            return rs.next();
+        }
+    }
+}
+
+
+/** Edit SOAP dan cabut verifikasi lama dalam satu transaksi. */
     static boolean editSOAP(Connection koneksi, String jenis, String noRawat,
             String tanggal, String jam, String kdDokter, String keluhan,
             String pemeriksaan, String penilaian, String rtl,

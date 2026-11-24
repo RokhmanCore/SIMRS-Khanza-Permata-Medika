@@ -6689,7 +6689,7 @@ private void BtnPasienKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event
             String aksi = nilai.get("aksi"), jenis = nilai.get("jenis"), noRawat = nilai.get("rawat");
             String tanggal = nilai.get("tgl"), jam = nilai.get("jam"), alasan = "";
             if ("edit".equals(aksi)) {
-                if (!SoapVerifikasiDPJP.bolehVerifikasi(koneksi, jenis, noRawat, akses.getkode())) {
+                if (!SoapVerifikasiDPJP.bolehEditSOAP(koneksi, jenis, noRawat, akses.getkode())) {
                     JOptionPane.showMessageDialog(this, "Hanya DPJP penanggung jawab yang boleh mengedit SOAP.");
                     return;
                 }
@@ -6792,17 +6792,19 @@ private void BtnPasienKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event
         StringBuilder hasil = new StringBuilder("<tr><td colspan='9' align='left'>");
         try {
             int[] jumlah = SoapVerifikasiDPJP.hitungStatusTanggal(koneksi, tanggal, akses.getkode());
+            boolean bolehCabutTanggal = SoapVerifikasiDPJP.adaVerifikasiDPJPTanggal(
+                    koneksi, tanggal, akses.getkode());
             if (jumlah[0] > 0) {
                 hasil.append("<a href='").append(linkVerifikasiSOAP("verifikasiSemuaTanggal", "", "", tanggal, ""))
                         .append("'><b style='background:#55a84f;color:white;padding:3px'>Verifikasi Semua SOAP di Tanggal : (")
                         .append(tanggal).append(")</b></a> &nbsp; ");
             }
-            if (jumlah[1] > 0) {
+            if (jumlah[1] > 0 && bolehCabutTanggal) {
                 hasil.append("<a href='").append(linkVerifikasiSOAP("cabutSemuaTanggal", "", "", tanggal, ""))
                         .append("'><b style='background:#d9534f;color:white;padding:3px'>Hapus Semua Verifikasi di Tanggal : (")
                         .append(tanggal).append(")</b></a> &nbsp; ");
             }
-            if (jumlah[0] == 0 && jumlah[1] == 0) {
+            if (jumlah[0] == 0 && (jumlah[1] == 0 || !bolehCabutTanggal)) {
                 hasil.append("<b title='Akun ").append(akses.getkode())
                         .append(" bukan DPJP yang bertanggung jawab pada tanggal ini' style='background:#b9d8b6;color:white;padding:3px'>")
                         .append("Verifikasi Semua SOAP di Tanggal : (").append(tanggal).append(")</b> ")
@@ -6817,12 +6819,13 @@ private void BtnPasienKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event
 
     private String tampilVerifikasiSOAP(String jenis, String noRawat, String tanggal, String jam) {
         try {
-            boolean dpjpLogin = SoapVerifikasiDPJP.bolehVerifikasi(koneksi, jenis, noRawat, akses.getkode());
+            boolean bolehVerifikasi = SoapVerifikasiDPJP.bolehVerifikasi(koneksi, jenis, noRawat, akses.getkode());
+            boolean dpjpLogin = SoapVerifikasiDPJP.bolehEditSOAP(koneksi, jenis, noRawat, akses.getkode());
             SoapVerifikasiDPJP.DataVerifikasi data = SoapVerifikasiDPJP.cari(koneksi, jenis, noRawat, tanggal, jam);
             if (data == null) {
-                return (dpjpLogin ? "<a href='" + linkVerifikasiSOAP("verifikasi", jenis, noRawat, tanggal, jam)
+                return (bolehVerifikasi ? "<a href='" + linkVerifikasiSOAP("verifikasi", jenis, noRawat, tanggal, jam)
                         + "'><b style='background:#55a84f;color:white;padding:3px'>Verifikasi</b></a>" :
-                        "<b title='Akun " + akses.getkode() + " bukan DPJP yang bertanggung jawab pada SOAP ini' style='background:#b9d8b6;color:white;padding:3px'>Verifikasi</b><br><font color='gray'>Login bukan DPJP</font>")
+                        "<b title='Akun " + akses.getkode() + " tidak memiliki hak verifikasi SOAP ini' style='background:#b9d8b6;color:white;padding:3px'>Verifikasi</b><br><font color='gray'>Tidak memiliki hak verifikasi</font>")
                         + (dpjpLogin ? "<br><a href='" + linkVerifikasiSOAP("edit", jenis, noRawat, tanggal, jam)
                         + "'><b style='background:#2878b8;color:white;padding:3px'>Edit SOAP</b></a>" : "");
             }

@@ -8378,7 +8378,14 @@ public class frmUtama extends javax.swing.JFrame {
                     BtnLog.setText("Log Out");
                     MnLogin.setText("Log Out");
                     lblStts.setText("Admin : ");
-                    lblUser.setText(akses.getkode());
+                    String namaAdmin=Sequel.CariDokter(akses.getkode());
+                    if(namaAdmin.equals("")){
+                        namaAdmin=Sequel.CariPetugas(akses.getkode());
+                    }
+                    if(namaAdmin.equals("")){
+                        namaAdmin=Sequel.CariPegawai(akses.getkode());
+                    }
+                    lblUser.setText(namaAdmin.equals("")?akses.getkode():namaAdmin);
                     MnGantiPassword.setEnabled(true);
                     MnPengajuanCutiPegawai.setEnabled(true);
                     BtnToolReg.setEnabled(akses.getregistrasi());

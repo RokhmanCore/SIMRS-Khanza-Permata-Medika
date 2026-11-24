@@ -5840,6 +5840,9 @@ private void BtnEditKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_B
     }//GEN-LAST:event_KdDokKeyPressed
 
     private void BtnSeekDokterActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_BtnSeekDokterActionPerformed
+        if(!"Admin Utama".equals(akses.getkode())){
+            return;
+        }
         DlgCariDokter dokter=new DlgCariDokter(null,false);
         dokter.addWindowListener(new WindowListener() {
             @Override
@@ -5889,6 +5892,9 @@ private void BtnEditKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_B
     }//GEN-LAST:event_kdptgKeyPressed
 
     private void BtnSeekPetugasActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_BtnSeekPetugasActionPerformed
+        if(!"Admin Utama".equals(akses.getkode())){
+            return;
+        }
         DlgCariPetugas petugas=new DlgCariPetugas(null,false);
         petugas.addWindowListener(new WindowListener() {
             @Override
@@ -5938,6 +5944,9 @@ private void BtnEditKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_B
     }//GEN-LAST:event_kdptg2KeyPressed
 
     private void BtnSeekPetugas2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_BtnSeekPetugas2ActionPerformed
+        if(!"Admin Utama".equals(akses.getkode())){
+            return;
+        }
         DlgCariPetugas petugas=new DlgCariPetugas(null,false);
         petugas.addWindowListener(new WindowListener() {
             @Override
@@ -5977,6 +5986,9 @@ private void BtnEditKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_B
     }//GEN-LAST:event_KdDok2KeyPressed
 
     private void BtnSeekDokter2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_BtnSeekDokter2ActionPerformed
+        if(!"Admin Utama".equals(akses.getkode())){
+            return;
+        }
         DlgCariDokter dokter=new DlgCariDokter(null,false);
         dokter.addWindowListener(new WindowListener() {
             @Override
@@ -7029,6 +7041,9 @@ private void BtnEditKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_B
     }//GEN-LAST:event_KdPegKeyPressed
 
     private void BtnSeekPegawaiActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_BtnSeekPegawaiActionPerformed
+        if(!"Admin Utama".equals(akses.getkode())){
+            return;
+        }
         DlgCariPegawai pegawai=new DlgCariPegawai(null,false);
         pegawai.addWindowListener(new WindowListener() {
             @Override
@@ -10038,6 +10053,15 @@ private void BtnEditKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_B
         BtnHapus.setEnabled(akses.gettindakan_ranap());
         BtnEdit.setEnabled(akses.gettindakan_ranap());
         BtnPrint.setEnabled(akses.gettindakan_ranap());
+
+        // Hanya Admin Utama yang boleh mengganti dokter/petugas pada input tindakan.
+        // Button dibuat disabled agar icon berubah abu-abu dan tidak dapat diklik.
+        boolean bolehGantiDokterPetugas = "Admin Utama".equals(akses.getkode());
+        BtnSeekDokter.setEnabled(bolehGantiDokterPetugas);
+        BtnSeekPetugas.setEnabled(bolehGantiDokterPetugas);
+        BtnSeekPegawai.setEnabled(bolehGantiDokterPetugas);
+        BtnSeekPetugas2.setEnabled(bolehGantiDokterPetugas);
+        BtnSeekDokter2.setEnabled(bolehGantiDokterPetugas);
         
         BtnDiagnosa.setVisible(akses.getdiagnosa_pasien());    
         if(akses.getdiagnosa_pasien()==true){

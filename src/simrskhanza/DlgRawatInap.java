@@ -7041,6 +7041,9 @@ private void BtnEditKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_B
     }//GEN-LAST:event_KdPegKeyPressed
 
     private void BtnSeekPegawaiActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_BtnSeekPegawaiActionPerformed
+        if(!"Admin Utama".equals(akses.getkode())){
+            return;
+        }
         DlgCariPegawai pegawai=new DlgCariPegawai(null,false);
         pegawai.addWindowListener(new WindowListener() {
             @Override
@@ -10056,6 +10059,7 @@ private void BtnEditKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_B
         boolean bolehGantiDokterPetugas = "Admin Utama".equals(akses.getkode());
         BtnSeekDokter.setEnabled(bolehGantiDokterPetugas);
         BtnSeekPetugas.setEnabled(bolehGantiDokterPetugas);
+        BtnSeekPegawai.setEnabled(bolehGantiDokterPetugas);
         BtnSeekPetugas2.setEnabled(bolehGantiDokterPetugas);
         BtnSeekDokter2.setEnabled(bolehGantiDokterPetugas);
         
